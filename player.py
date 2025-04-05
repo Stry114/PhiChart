@@ -1095,6 +1095,6 @@ class Player:
 
 
 if __name__ == '__main__':
-    player = Player(autoMatch.Matcher("charts/rr/"), h=720, w=1280, fps=90)
+    player = Player(autoMatch.Matcher("charts/retribution/"), h=300, w=600, fps=90)
     player.initPlayer()
     player.mainloop()
