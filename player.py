@@ -2,6 +2,7 @@ import pygame
 import random
 import time
 import math
+import wave
 
 import cv2
 import numpy as np
@@ -10,6 +11,26 @@ import analyzer
 import chart
 import autoMatch
 import traceback
+
+
+timerClock = time.time()
+def mytimer(msg: str):
+    global timerClock
+    current = time.time()
+    cost = current - timerClock
+    timerClock = current
+    # print(msg, cost*1000, "ms")
+    return cost
+
+def get_wav_duration(wav_path):
+    with wave.open(wav_path, 'rb') as wav_file:
+        # 获取帧数 (nframes) 和帧率 (framerate)
+        frames = wav_file.getnframes()
+        rate = wav_file.getframerate()
+
+        # 计算时长（秒）
+        duration = frames / float(rate)
+        return duration
 
 
 # 添加高斯模糊
@@ -57,9 +78,6 @@ def colorize_grayscale(surface, color):
     result = surface.copy()
     result.blit(colored_surface, (0, 0), special_flags=pygame.BLEND_MULT)
     return result
-
-
-import pygame
 
 
 def draw_text(surface, text, font, color, pos, align='left', aa=True, bg=None):
@@ -136,11 +154,42 @@ class PreRendCache:
         topRect = pygame.Rect(0, 0, self.holdOriginalImage.get_width(), self.hhh)
         self.holdTopImage = self.holdOriginalImage.subsurface(topRect)
         self.holdTopImage = pygame.transform.scale(self.holdTopImage, (self.noteWidth, self.noteWidth*(self.hhh/self.holdTopImage.get_width())))
-        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(), self.holdOriginalImage.get_height()-self.hhh*2)
-        self.holdBodyImage = self.holdOriginalImage.subsurface(bodyRect)
         bottomRect = pygame.Rect(0, self.holdOriginalImage.get_height()-self.hhh, self.holdOriginalImage.get_width(), self.hhh)
         self.holdBottomImage = self.holdOriginalImage.subsurface(bottomRect)
         self.holdBottomImage = pygame.transform.scale(self.holdBottomImage, (self.noteWidth, self.noteWidth*(self.hhh/self.holdTopImage.get_width())))
+
+        # 把body分成3份
+        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(), self.holdOriginalImage.get_height()-self.hhh*2)
+        self.holdBodyImage = self.holdOriginalImage.subsurface(bodyRect)
+        self.holdBodyImage = pygame.transform.scale(self.holdBodyImage, (self.noteWidth, self.holdBodyImage.get_height()))
+        self.hhb = self.holdBodyImage.get_height()  # height of hold body
+        self.div3HoldImages: list[pygame.Surface] = []
+        for i in range(3):
+            tempRect = pygame.Rect(0, (i/3)*self.hhb, noteWidth, self.hhb/3)
+            tempSurf = self.holdBodyImage.subsurface(tempRect)
+            self.div3HoldImages.append(tempSurf)
+
+        # 把body分成10份
+        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(), self.holdOriginalImage.get_height()-self.hhh)
+        self.holdBodyImage = self.holdOriginalImage.subsurface(bodyRect)
+        self.holdBodyImage = pygame.transform.scale(self.holdBodyImage, (self.noteWidth, self.holdBodyImage.get_height()))
+        self.hhb = self.holdBodyImage.get_height()  # height of hold body
+        self.div10HoldImages: list[pygame.Surface] = []
+        for i in range(10):
+            tempRect = pygame.Rect(0, (i/10)*self.hhb, noteWidth, self.hhb/10)
+            tempSurf = self.holdBodyImage.subsurface(tempRect)
+            self.div10HoldImages.append(tempSurf)
+
+        # 把body分成100份
+        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(),self.holdOriginalImage.get_height() - self.hhh)
+        self.holdBodyImage = self.holdOriginalImage.subsurface(bodyRect)
+        self.holdBodyImage = pygame.transform.scale(self.holdBodyImage,(self.noteWidth, self.holdBodyImage.get_height()))
+        self.hhb = self.holdBodyImage.get_height()  # height of hold body
+        self.div100HoldImages: list[pygame.Surface] = []
+        for i in range(100):
+            tempRect = pygame.Rect(0, (i / 100) * self.hhb, noteWidth, self.hhb / 100)
+            tempSurf = self.holdBodyImage.subsurface(tempRect)
+            self.div100HoldImages.append(tempSurf)
 
         tapNoteHeight = self.tapOriginalImage.get_height() / self.tapOriginalImage.get_width() * self.noteWidth
         self.tapOriginalImage = pygame.transform.scale(self.tapOriginalImage, (self.noteWidth, tapNoteHeight))
@@ -171,7 +220,7 @@ class PreRendCache:
                 self.preRendHit.append(surface)
 
     def tap(self, angle) -> pygame.Surface:
-        angle = int(angle)
+        angle = int((angle+180)%180)
         if angle not in self.preRendTap:
             surf = pygame.transform.rotate(self.tapOriginalImage, angle)
             self.preRendTap[angle] = surf
@@ -180,7 +229,7 @@ class PreRendCache:
             return self.preRendTap[angle]
 
     def tapHL(self, angle) -> pygame.Surface:
-        angle = int(angle)
+        angle = int((angle+180)%180)
         if angle not in self.preRendTapHL:
             surf = pygame.transform.rotate(self.tapHLOriginalImage, angle)
             self.preRendTapHL[angle] = surf
@@ -189,7 +238,7 @@ class PreRendCache:
             return self.preRendTapHL[angle]
 
     def drag(self, angle) -> pygame.Surface:
-        angle = int(angle)
+        angle = int((angle+180)%180)
         if angle not in self.preRendDrag:
             surf = pygame.transform.rotate(self.dragOriginalImage, angle)
             self.preRendDrag[angle] = surf
@@ -198,7 +247,7 @@ class PreRendCache:
             return self.preRendDrag[angle]
 
     def dragHL(self, angle) -> pygame.Surface:
-        angle = int(angle)
+        angle = int((angle+180)%180)
         if angle not in self.preRendDragHL:
             surf = pygame.transform.rotate(self.dragHLOriginalImage, angle)
             self.preRendDragHL[angle] = surf
@@ -207,7 +256,7 @@ class PreRendCache:
             return self.preRendDragHL[angle]
 
     def flick(self, angle) -> pygame.Surface:
-        angle = int(angle)
+        angle = int((angle+180)%180)
         if angle not in self.preRendFlick:
             surf = pygame.transform.rotate(self.flickOriginalImage, angle)
             self.preRendFlick[angle] = surf
@@ -216,7 +265,7 @@ class PreRendCache:
             return self.preRendFlick[angle]
 
     def flickHL(self, angle) -> pygame.Surface:
-        angle = int(angle)
+        angle = int((angle+180)%180)
         if angle not in self.preRendFlickHL:
             surf = pygame.transform.rotate(self.flickHLOriginalImage, angle)
             self.preRendFlickHL[angle] = surf
@@ -271,6 +320,7 @@ class HitEffect:
 
 class Player:
     def __init__(self, matcher: autoMatch.Matcher, w: int = 1200, h: int = 600, fps: int = 60):
+
         self.width = w
         self.height = h
 
@@ -286,8 +336,8 @@ class Player:
         self.lineLength = 5000
         self.lineWidth = 5
         # 键大小
-        self.noteSize = int(self.width / 5)
-        self.hitEffectSize = int(self.width / 4.5)
+        self.noteSize = int(self.width / 8)
+        self.hitEffectSize = int(self.width / 6)
         # 单位
         self.X = 0.05626 * self.width
         self.Y = 0.6 * self.height
@@ -296,7 +346,7 @@ class Player:
         self.level = "AT Lv.16"
         self.name = "Antithese"
         # 显示UI
-        self.displayDebug = False
+        self.displayDebug = True
         self.displayUI = True
         # 双押提示
         self.doubleHitEffect = True
@@ -315,6 +365,16 @@ class Player:
         # 连击数统计
         self.combo = 0
         self.score = 0
+        # 暂停
+        self.pause = False
+        # 性能计时器
+        self.noteCost = None
+        self.holdCost = None
+        self.lineCost = None
+        self.effectCost = None
+        self.hitBlockCost = None
+        # 音频长度
+        self.waveDurationS = None
 
         ### 固有对象
 
@@ -325,7 +385,7 @@ class Player:
         self.audioFile = matcher.audioFile
 
         # pygame变量
-        self.screen = pygame.display.set_mode((w, h), )
+        self.screen = pygame.display.set_mode((w, h), pygame.HWSURFACE | pygame.DOUBLEBUF)
         # 铺面对象
         self.chart: chart.Chart = ...
         # 静态背景图层
@@ -356,6 +416,22 @@ class Player:
         self.noteCount = 0
         self.holdCount = 0
 
+        mytimer("初始化")
+
+        # 绘制进度条
+        pygame.draw.rect(
+            self.foreground_layer,
+            (255, 255, 255, 100),
+            (0, 0, self.width*(self.timeS/self.waveDurationS), 8),
+            width=0,
+        )
+        pygame.draw.rect(
+            self.foreground_layer,
+            (255, 255, 255, 200),
+            (self.width*(self.timeS/self.waveDurationS), 0, 5 , 8),
+            width=0,
+        )
+
         # 击中特效的方块飞舞
         for effect in self.hitEffectList:
             for i in range(len(effect.xList)):
@@ -367,14 +443,22 @@ class Player:
                 y = self.height - y
                 pygame.draw.rect(self.foreground_layer, color, (x-size, y-size, size*2, size*2))
 
+        self.hitBlockCost = mytimer("特效方块")
+
         for line in self.chart.lineList:
             x = line.move1(self.timeT) * self.width
             y = line.move2(self.timeT) * self.height
             a = line.alpha(self.timeT)
             r = line.rotate(self.timeT)
-
             Vsin = math.sin(math.radians(r))
             Vcos = math.cos(math.radians(r))
+
+            line.tempX = x
+            line.tempY = y
+            line.tempR = r
+            line.tempS = Vsin
+            line.tempC = Vcos
+
             x1 = int(x - Vcos * self.lineLength / 2)
             y1 = int(y - Vsin * self.lineLength / 2)
             x2 = int(x + Vcos * self.lineLength / 2)
@@ -398,6 +482,8 @@ class Player:
                     end_pos=(x2, y2),
                     width=self.lineWidth
                 )
+
+        self.lineCost = mytimer("判定线")
 
         for line in self.chart.lineList:
             x = line.move1(self.timeT) * self.width
@@ -464,23 +550,9 @@ class Player:
                 y3 = self.height - y3
                 y4 = self.height - y4
 
-                # 判断note是否在屏幕范围内
-                x_min = min(x1, x2, x3, x4)
-                x_max = max(x1, x2, x3, x4)
-                y_min = min(y1, y2, y3, y4)
-                y_max = max(y1, y2, y3, y4)
-                if max(x_min, 0) > min(x_max, self.width):
-                    continue
-                if max(y_min, 0) > min(y_max, self.height):
-                    continue
+                self.holdRender(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
 
-                height = math.sqrt((x1 - x3)**2 + (y1 - y3)**2)
-                surface = self.images.hold(r, height, note.above)
-                x0 = int((x1+x4)/2 - surface.get_width() / 2)
-                y0 = int((y1+y4)/2 - surface.get_height() / 2)
-                self.foreground_layer.blit(surface, (x0, y0))
-                #pygame.draw.polygon(self.foreground_layer, (155, 232, 254, 180), ((x1, y1), (x2, y2), (x4, y4), (x3, y3)))
-                self.holdCount += 1
+        self.holdCost = mytimer("hold")
 
         for line in self.chart.lineList:
             x = line.move1(self.timeT) * self.width
@@ -491,6 +563,7 @@ class Player:
             Vcos = math.cos(math.radians(r))
 
             for note in line.noteList:
+
                 if note.type_ == 3:
                     continue
                 if note.hit:
@@ -498,18 +571,14 @@ class Player:
 
                 dx = note.posX * self.X
                 dy = note.speed * (note.floorPos - line.pos(self.timeT)) * self.Y
-                dyt = dy
+
 
                 if note.above:
                     xn = x + dx * Vcos - dy * Vsin
                     yn = y + dx * Vsin + dy * Vcos
-                    xnt = x + dx * Vcos - dyt * Vsin
-                    ynt = y + dx * Vsin + dyt * Vcos
                 else:
                     xn = x + dx * Vcos + dy * Vsin
                     yn = y + dx * Vsin - dy * Vcos
-                    xnt = x + dx * Vcos + dyt * Vsin
-                    ynt = y + dx * Vsin - dyt * Vcos
 
                 # 根据时间判断，跳过渲染还是添加特效
                 frameDelta = 0.5/self.FPS * self.BPM / 1.875 * 0
@@ -528,28 +597,9 @@ class Player:
                     elif note.type_ == 4:
                         self.flickSound.play()
 
-                x1 = int(xn - Vcos * self.noteSize / 2)
-                y1 = int(yn - Vsin * self.noteSize / 2)
-                x2 = int(xn + Vcos * self.noteSize / 2)
-                y2 = int(yn + Vsin * self.noteSize / 2)
-                x3 = int(xnt - Vcos * self.noteSize / 2)
-                y3 = int(ynt - Vsin * self.noteSize / 2)
-                x4 = int(xnt + Vcos * self.noteSize / 2)
-                y4 = int(ynt + Vsin * self.noteSize / 2)
-
-                y1 = self.height - y1
-                y2 = self.height - y2
-                y3 = self.height - y3
-                y4 = self.height - y4
-
-                # 判断note是否在屏幕范围内
-                x_min = min(x1, x2, x3, x4)
-                x_max = max(x1, x2, x3, x4)
-                y_min = min(y1, y2, y3, y4)
-                y_max = max(y1, y2, y3, y4)
-                if max(x_min, 0) > min(x_max, self.width):
+                if xn < -self.noteSize or xn > self.width+self.noteSize:
                     continue
-                if max(y_min, 0) > min(y_max, self.height):
+                elif yn < -self.noteSize or yn > self.height+self.noteSize:
                     continue
 
                 if note.doubleHit and self.doubleHitEffect:
@@ -573,12 +623,164 @@ class Player:
                 self.foreground_layer.blit(surface, (x0, y0))
                 self.noteCount += 1
 
+        self.noteCost = mytimer("note")
+
         for effect in self.hitEffectList:
             x = effect.x - self.hitEffectSize // 2
             y = self.height - effect.y - self.hitEffectSize // 2
             self.foreground_layer.blit(self.images.hit(effect.frame), (x, y))
             effect.frame += 1
         self.hitEffectList = [effect for effect in self.hitEffectList if effect.frame < 42]
+
+        self.effectCost = mytimer("特效")
+
+    def holdRender(self, x1, x2, x3, x4, y1, y2, y3, y4, angle: float, above):
+        height = math.sqrt((x1 - x3) ** 2 + (y1 - y3) ** 2)
+        topHeight = self.images.holdTopImage.get_height()
+        topHeight = 0
+        bodyHeight = height - topHeight * 2
+
+        if bodyHeight <= 0:
+            return
+
+        if height > 10000:
+            for i in range(100):
+                d = ((i/100)*bodyHeight+topHeight) / height
+                e = (((i+1)/100)*bodyHeight+topHeight) / height
+                xi1 = x1 * d + x3 * (1 - d)
+                yi1 = y1 * d + y3 * (1 - d)
+                xi2 = x2 * d + x4 * (1 - d)
+                yi2 = y2 * d + y4 * (1 - d)
+                xi3 = x1 * e + x3 * (1 - e)
+                yi3 = y1 * e + y3 * (1 - e)
+                xi4 = x2 * e + x4 * (1 - e)
+                yi4 = y2 * e + y4 * (1 - e)
+
+                minX = min(xi1, xi2, xi3, xi4)
+                maxX = max(xi1, xi2, xi3, xi4)
+                minY = min(yi1, yi2, yi3, yi4)
+                maxY = max(yi1, yi2, yi3, yi4)
+
+                if maxX < 0 or minX > self.width or maxY < 0 or minY > self.height:
+                    continue
+
+                if above:
+                    image = pygame.transform.scale(self.images.div100HoldImages[i], (self.noteSize, bodyHeight/100))
+                    image = pygame.transform.rotate(image, angle)
+                else:
+                    image = pygame.transform.scale(self.images.div100HoldImages[i], (self.noteSize, bodyHeight/100))
+                    image = pygame.transform.rotate(image, angle+180)
+
+                self.foreground_layer.blit(image, (minX, minY))
+                self.holdCount += 1
+        elif height > 3000:
+            for i in range(10):
+                d = ((i/10)*bodyHeight+topHeight) / height
+                e = (((i+1)/10)*bodyHeight+topHeight) / height
+                xi1 = x1 * d + x3 * (1 - d)
+                yi1 = y1 * d + y3 * (1 - d)
+                xi2 = x2 * d + x4 * (1 - d)
+                yi2 = y2 * d + y4 * (1 - d)
+                xi3 = x1 * e + x3 * (1 - e)
+                yi3 = y1 * e + y3 * (1 - e)
+                xi4 = x2 * e + x4 * (1 - e)
+                yi4 = y2 * e + y4 * (1 - e)
+
+                minX = min(xi1, xi2, xi3, xi4)
+                maxX = max(xi1, xi2, xi3, xi4)
+                minY = min(yi1, yi2, yi3, yi4)
+                maxY = max(yi1, yi2, yi3, yi4)
+
+                if maxX < 0 or minX > self.width or maxY < 0 or minY > self.height:
+                    continue
+
+                if above:
+                    image = pygame.transform.scale(self.images.div10HoldImages[i], (self.noteSize, bodyHeight/10))
+                    image = pygame.transform.rotate(image, angle)
+                else:
+                    image = pygame.transform.scale(self.images.div10HoldImages[i], (self.noteSize, bodyHeight/10))
+                    image = pygame.transform.rotate(image, angle+180)
+
+                self.foreground_layer.blit(image, (minX, minY))
+                self.holdCount += 1
+        elif height > 1000:
+            for i in range(3):
+                d = ((i/3)*bodyHeight+topHeight) / height
+                e = (((i+1)/3)*bodyHeight+topHeight) / height
+                xi1 = x1 * d + x3 * (1 - d)
+                yi1 = y1 * d + y3 * (1 - d)
+                xi2 = x2 * d + x4 * (1 - d)
+                yi2 = y2 * d + y4 * (1 - d)
+                xi3 = x1 * e + x3 * (1 - e)
+                yi3 = y1 * e + y3 * (1 - e)
+                xi4 = x2 * e + x4 * (1 - e)
+                yi4 = y2 * e + y4 * (1 - e)
+
+                minX = min(xi1, xi2, xi3, xi4)
+                maxX = max(xi1, xi2, xi3, xi4)
+                minY = min(yi1, yi2, yi3, yi4)
+                maxY = max(yi1, yi2, yi3, yi4)
+
+                if maxX < 0 or minX > self.width or maxY < 0 or minY > self.height:
+                    continue
+
+                if above:
+                    image = pygame.transform.scale(self.images.div3HoldImages[i], (self.noteSize, bodyHeight/3))
+                    image = pygame.transform.rotate(image, angle)
+                else:
+                    image = pygame.transform.scale(self.images.div3HoldImages[i], (self.noteSize, bodyHeight/3))
+                    image = pygame.transform.rotate(image, angle+180)
+
+                self.foreground_layer.blit(image, (minX, minY))
+                self.holdCount += 1
+        else:
+            # d = (0*bodyHeight+topHeight) / height
+            # e = (1*bodyHeight+topHeight) / height
+            # xi1 = x1 * d + x3 * (1-d)
+            # yi1 = y1 * d + y3 * (1-d)
+            # xi2 = x2 * d + x4 * (1-d)
+            # yi2 = y2 * d + y4 * (1-d)
+            # xi3 = x1 * e + x3 * (1-e)
+            # yi3 = y1 * e + y3 * (1-e)
+            # xi4 = x2 * e + x4 * (1-e)
+            # yi4 = y2 * e + y4 * (1-e)
+            #
+            # minX = min(xi1, xi2, xi3, xi4)
+            # maxX = max(xi1, xi2, xi3, xi4)
+            # minY = min(yi1, yi2, yi3, yi4)
+            # maxY = max(yi1, yi2, yi3, yi4)
+
+            minX = min(x1, x2, x3, x4)
+            maxX = max(x1, x2, x3, x4)
+            minY = min(y1, y2, y3, y4)
+            maxY = max(y1, y2, y3, y4)
+
+            if maxX < 0 or minX > self.width or maxY < 0 or minY > self.height:
+                return
+
+            if above:
+                image = pygame.transform.scale(self.images.holdOriginalImage, (self.noteSize, bodyHeight))
+                image = pygame.transform.rotate(image, angle)
+            else:
+                image = pygame.transform.scale(self.images.holdOriginalImage, (self.noteSize, bodyHeight))
+                image = pygame.transform.rotate(image, angle + 180)
+
+            self.foreground_layer.blit(image, (minX, minY))
+            self.holdCount += 1
+
+    def is_rect_off_screen(self, x1, y1, x2, y2):
+        left = min(x1, x2)
+        right = max(x1, x2)
+        top = min(y1, y2)
+        bottom = max(y1, y2)
+
+        # 判断是否完全超出屏幕
+        if (right < 0 or  # 完全在左侧
+                left > self.width or  # 完全在右侧
+                bottom < 0 or  # 完全在上方
+                top > self.height):  # 完全在下方
+            return True
+        return False
 
     def UIrender(self):
 
@@ -654,7 +856,7 @@ class Player:
             self.foreground_layer,
             f"lines: {self.lineCount}",
             self.font18, self.WHITE,
-            pos=(20, 70),
+            pos=(20, 170),
             align="NW",
         )
 
@@ -662,7 +864,7 @@ class Player:
             self.foreground_layer,
             f"notes: {self.noteCount}",
             self.font18, self.WHITE,
-            pos=(20, 90),
+            pos=(20, 190),
             align="NW",
         )
 
@@ -670,7 +872,7 @@ class Player:
             self.foreground_layer,
             f"holds: {self.holdCount}",
             self.font18, self.WHITE,
-            pos=(20, 110),
+            pos=(20, 210),
             align="NW",
         )
 
@@ -678,7 +880,7 @@ class Player:
             self.foreground_layer,
             f"effects: {len(self.hitEffectList)}",
             self.font18, self.WHITE,
-            pos=(20, 130),
+            pos=(20, 230),
             align="NW",
         )
 
@@ -686,7 +888,7 @@ class Player:
             self.foreground_layer,
             f"pre-rendered images cache:",
             self.font18, self.WHITE,
-            pos=(20, 160),
+            pos=(20, 260),
             align="NW",
         )
 
@@ -695,7 +897,7 @@ class Player:
             self.foreground_layer,
             f"tap: {cacheCount}",
             self.font18, self.WHITE,
-            pos=(20, 180),
+            pos=(20, 280),
             align="NW",
         )
 
@@ -704,7 +906,7 @@ class Player:
             self.foreground_layer,
             f"drag: {cacheCount}",
             self.font18, self.WHITE,
-            pos=(20, 200),
+            pos=(20, 300),
             align="NW",
         )
 
@@ -713,7 +915,7 @@ class Player:
             self.foreground_layer,
             f"flick: {cacheCount}",
             self.font18, self.WHITE,
-            pos=(20, 220),
+            pos=(20, 320),
             align="NW",
         )
 
@@ -721,23 +923,65 @@ class Player:
             self.foreground_layer,
             f"timeT: {self.timeT: .02f}",
             self.font18, self.WHITE,
-            pos=(20, 250),
+            pos=(20, 350),
             align="NW",
         )
         draw_text(
             self.foreground_layer,
             f"timeS: {self.timeS: .02f} s",
             self.font18, self.WHITE,
-            pos=(20, 270),
+            pos=(20, 370),
             align="NW",
         )
         draw_text(
             self.foreground_layer,
             f"beats: {self.timeT // 32: .0f}",
             self.font18, self.WHITE,
-            pos=(20, 290),
+            pos=(20, 390),
             align="NW",
         )
+
+        draw_text(
+            self.foreground_layer,
+            f"hit: {self.hitBlockCost*1000: .2f} ms",
+            self.font18, self.WHITE,
+            pos=(20, 60),
+            align="NW",
+        )
+        draw_text(
+            self.foreground_layer,
+            f"effect: {self.effectCost*1000: .2f} ms",
+            self.font18, self.WHITE,
+            pos=(20, 80),
+            align="NW",
+        )
+        draw_text(
+            self.foreground_layer,
+            f"note: {self.noteCost*1000: .2f} ms",
+            self.font18, self.WHITE,
+            pos=(20, 100),
+            align="NW",
+        )
+        draw_text(
+            self.foreground_layer,
+            f"line: {self.lineCost*1000: .2f} ms",
+            self.font18, self.WHITE,
+            pos=(20, 120),
+            align="NW",
+        )
+        draw_text(
+            self.foreground_layer,
+            f"hold: {self.holdCost*1000: .2f} ms",
+            self.font18, self.WHITE,
+            pos=(20, 140),
+            align="NW",
+        )
+
+        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 60, self.hitBlockCost/(1/self.FPS)*100, 16))
+        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 80, self.effectCost/(1/self.FPS)*100, 16))
+        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 100, self.noteCost/(1/self.FPS)*100, 16))
+        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 120, self.lineCost/(1/self.FPS)*100, 16))
+        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 140, self.holdCost/(1/self.FPS)*100, 16))
 
     def initPlayer(self):
         # 初始化 pygame
@@ -748,6 +992,9 @@ class Player:
         self.tapSound = pygame.mixer.Sound("assets/click.wav")
         self.dragSound = pygame.mixer.Sound("assets/drag.wav")
         self.flickSound = pygame.mixer.Sound("assets/flick.wav")
+
+        # 计算音频长度
+        self.waveDurationS = get_wav_duration(self.audioFile)
 
         # 初始化背景图
         try:
@@ -807,6 +1054,12 @@ class Player:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        self.pause = not self.pause
+            if self.pause:
+                clock.tick(self.FPS)
+                continue
 
             # 清空屏幕（用白色填充）
             # 绘制当前帧的所有内容
@@ -842,6 +1095,6 @@ class Player:
 
 
 if __name__ == '__main__':
-    player = Player(autoMatch.Matcher("charts/反命题 AT/"), h=1280, w=720, fps=90)
+    player = Player(autoMatch.Matcher("charts/rr/"), h=720, w=1280, fps=90)
     player.initPlayer()
     player.mainloop()
