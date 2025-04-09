@@ -22,6 +22,11 @@ def mytimer(msg: str):
     # print(msg, cost*1000, "ms")
     return cost
 
+# tempFunction = time.time
+# def mytime() -> float:
+#     return tempFunction()/4
+# time.time = mytime
+
 def get_wav_duration(wav_path):
     with wave.open(wav_path, 'rb') as wav_file:
         # 获取帧数 (nframes) 和帧率 (framerate)
@@ -170,7 +175,7 @@ class PreRendCache:
             self.div3HoldImages.append(tempSurf)
 
         # 把body分成10份
-        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(), self.holdOriginalImage.get_height()-self.hhh)
+        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(), self.holdOriginalImage.get_height()-self.hhh*2)
         self.holdBodyImage = self.holdOriginalImage.subsurface(bodyRect)
         self.holdBodyImage = pygame.transform.scale(self.holdBodyImage, (self.noteWidth, self.holdBodyImage.get_height()))
         self.hhb = self.holdBodyImage.get_height()  # height of hold body
@@ -181,7 +186,7 @@ class PreRendCache:
             self.div10HoldImages.append(tempSurf)
 
         # 把body分成100份
-        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(),self.holdOriginalImage.get_height() - self.hhh)
+        bodyRect = pygame.Rect(0, self.hhh, self.holdOriginalImage.get_width(),self.holdOriginalImage.get_height() - self.hhh*2)
         self.holdBodyImage = self.holdOriginalImage.subsurface(bodyRect)
         self.holdBodyImage = pygame.transform.scale(self.holdBodyImage,(self.noteWidth, self.holdBodyImage.get_height()))
         self.hhb = self.holdBodyImage.get_height()  # height of hold body
@@ -336,15 +341,15 @@ class Player:
         self.lineLength = 5000
         self.lineWidth = 5
         # 键大小
-        self.noteSize = int(self.width / 8)
-        self.hitEffectSize = int(self.width / 6)
+        self.noteSize = int(self.width / 4)
+        self.hitEffectSize = int(self.width / 3)
         # 单位
         self.X = 0.05626 * self.width
         self.Y = 0.6 * self.height
         # UI文字
-        self.subtitle = "PHICHART"
-        self.level = "AT Lv.16"
-        self.name = "Antithese"
+        self.subtitle = "AUTOPLAY"
+        self.level = "SP Lv.?"
+        self.name = "Retribution Vertical"
         # 显示UI
         self.displayDebug = True
         self.displayUI = True
@@ -665,10 +670,10 @@ class Player:
                     continue
 
                 if above:
-                    image = pygame.transform.scale(self.images.div100HoldImages[i], (self.noteSize, bodyHeight/100))
+                    image = pygame.transform.scale(self.images.div100HoldImages[i], (self.noteSize, bodyHeight/100+1))
                     image = pygame.transform.rotate(image, angle)
                 else:
-                    image = pygame.transform.scale(self.images.div100HoldImages[i], (self.noteSize, bodyHeight/100))
+                    image = pygame.transform.scale(self.images.div100HoldImages[i], (self.noteSize, bodyHeight/100+1))
                     image = pygame.transform.rotate(image, angle+180)
 
                 self.foreground_layer.blit(image, (minX, minY))
@@ -695,10 +700,10 @@ class Player:
                     continue
 
                 if above:
-                    image = pygame.transform.scale(self.images.div10HoldImages[i], (self.noteSize, bodyHeight/10))
+                    image = pygame.transform.scale(self.images.div10HoldImages[i], (self.noteSize, bodyHeight/10+1))
                     image = pygame.transform.rotate(image, angle)
                 else:
-                    image = pygame.transform.scale(self.images.div10HoldImages[i], (self.noteSize, bodyHeight/10))
+                    image = pygame.transform.scale(self.images.div10HoldImages[i], (self.noteSize, bodyHeight/10+1))
                     image = pygame.transform.rotate(image, angle+180)
 
                 self.foreground_layer.blit(image, (minX, minY))
@@ -725,10 +730,10 @@ class Player:
                     continue
 
                 if above:
-                    image = pygame.transform.scale(self.images.div3HoldImages[i], (self.noteSize, bodyHeight/3))
+                    image = pygame.transform.scale(self.images.div3HoldImages[i], (self.noteSize, bodyHeight/3+1))
                     image = pygame.transform.rotate(image, angle)
                 else:
-                    image = pygame.transform.scale(self.images.div3HoldImages[i], (self.noteSize, bodyHeight/3))
+                    image = pygame.transform.scale(self.images.div3HoldImages[i], (self.noteSize, bodyHeight/3+1))
                     image = pygame.transform.rotate(image, angle+180)
 
                 self.foreground_layer.blit(image, (minX, minY))
@@ -1095,6 +1100,6 @@ class Player:
 
 
 if __name__ == '__main__':
-    player = Player(autoMatch.Matcher("charts/retribution/"), h=300, w=600, fps=90)
+    player = Player(autoMatch.Matcher("charts/风屿 AT/"), h=1000, w=500, fps=120)
     player.initPlayer()
     player.mainloop()
