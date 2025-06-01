@@ -4,10 +4,11 @@ A Phigros emulator based on python pygame.
 
 Player提供了丰富的自定义参数，允许用户实现各种奇特的功能，诸如谱面解密、竖屏模式等。
 
-
 # 依赖
  - pygame
  - numpy
+
+$\surd\left(\dfrac 1 2\right)$
 
 # 运行
 1. 安装所需的依赖库。

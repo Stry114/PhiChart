@@ -13,6 +13,7 @@ import autoMatch
 import traceback
 
 timerClock = time.time()
+running = False
 
 
 def mytimer(msg: str):
@@ -26,8 +27,9 @@ def mytimer(msg: str):
 
 # tempFunction = time.time
 # def mytime() -> float:
-#     return tempFunction()/4
+#     return tempFunction()*0.75
 # time.time = mytime
+
 
 def get_wav_duration(wav_path):
     with wave.open(wav_path, 'rb') as wav_file:
@@ -334,7 +336,7 @@ class HitEffect:
 
 
 class Player:
-    def __init__(self, matcher: autoMatch.Matcher, w: int = 1200, h: int = 600, fps: int = 60,
+    def __init__(self, matcher: autoMatch.Matcher = None, w: int = 1200, h: int = 600, fps: int = 60,
                  subtitle="AUTOPLAY", level="Un Lv.?", chartName="Unknown", chartDelay: float = 0,
                  debug: bool = False, displayUI: bool = True, enableMapping: bool = False, doubleHitEffect: bool = True,
                  brightness: float = 0.4, blurRadius: int = 300):
@@ -351,7 +353,7 @@ class Player:
         self.BLACK = (0, 0, 0, 255)
         self.WHITE = (255, 255, 255, 255)
         # 判定线长度/粗细
-        self.lineLength = 5000
+        self.lineLength = 10000
         self.lineWidth = 5
         # 键大小
         self.noteSize = int(self.width / 8)
@@ -394,7 +396,7 @@ class Player:
         # 音频长度
         self.waveDurationS = None
         # 映射
-        self.targetRectOfMapping: tuple = (w / 3 * 1, h / 3 * 1, w / 3 * 2, h / 3 * 2)
+        self.targetRectOfMapping: tuple = (w / 5 * 2, h / 5 * 2, w / 5 * 3, h / 5 * 3)
         self.enableMapping: bool = enableMapping
         self.mx1: int | None = None
         self.mx2: int | None = None
@@ -407,9 +409,14 @@ class Player:
 
         # 初始化铺面文件
         self.matcher = matcher
-        self.illuFile = matcher.illuFile
-        self.chartFile = matcher.chartFile
-        self.audioFile = matcher.audioFile
+        if matcher is not None:
+            self.illuFile = matcher.illuFile
+            self.chartFile = matcher.chartFile
+            self.audioFile = matcher.audioFile
+        else:
+            self.illuFile = None
+            self.chartFile = None
+            self.audioFile = None
 
         # pygame变量
         self.screen = pygame.display.set_mode((w, h), pygame.HWSURFACE | pygame.DOUBLEBUF)
@@ -1127,7 +1134,7 @@ class Player:
         pygame.mixer.music.load(self.audioFile)
 
     def mainloop(self):
-
+        global running
         running = True
         clock = pygame.time.Clock()
         # 计时器，用于评估性能
@@ -1150,6 +1157,8 @@ class Player:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                    pygame.quit()
+                    return
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.pause = not self.pause
