@@ -73,11 +73,11 @@ def runningThread():
         if lb4int1.get() == 1:
             player.enableMapping = True
 
-            if lb4et1.get() != "":
+            if lb4et1.state() == NORMAL and lb4et1.get() != "":
                 centerX = int(lb4et1.get())
             else:
                 centerX = int(player.width / 2)
-            if lb4et2.get() != "":
+            if lb4et1.state() == NORMAL and lb4et2.get() != "":
                 centerY = int(lb4et2.get())
             else:
                 centerY = int(player.height / 2)
@@ -91,8 +91,16 @@ def runningThread():
             y2 = round(centerY + player.height * scale * 0.5)
             player.targetRectOfMapping = (x1, y1, x2, y2)
 
-
-
+        if lb5int1.get() == 1:
+            player.enable3D = True
+            if lb5et1.get() != "":
+                player.speed = float(lb5et1.get())
+            if lb5et2.get() != "":
+                player.boundary = float(lb5et2.get())
+            if lb5et3.get() != "":
+                player.b = float(lb5et3.get())
+            if lb5et4.get() != "":
+                player.h = float(lb5et4.get())
 
         player.initPlayer()
         player.mainloop()
@@ -125,7 +133,7 @@ def defaultArgs(*args):
     setEntry(lb2et2, "600")
     setEntry(lb2et3, "")
     setEntry(lb2et4, "")
-    setEntry(lb3et1, "90")
+    setEntry(lb3et1, "60")
     setEntry(lb3et2, "")
     setEntry(lb3et3, "")
     setEntry(lb3et4, "")
@@ -237,10 +245,10 @@ lb5et1 = ttk.Entry(lb5)
 lb5et1.grid(row=1, column=1, sticky=EW, padx=5, pady=5)
 lb5et2 = ttk.Entry(lb5)
 lb5et2.grid(row=2, column=1, sticky=EW, padx=5, pady=5)
-lb5et2 = ttk.Entry(lb5)
-lb5et2.grid(row=3, column=1, sticky=EW, padx=5, pady=5)
-lb5et2 = ttk.Entry(lb5)
-lb5et2.grid(row=4, column=1, sticky=EW, padx=5, pady=5)
+lb5et3 = ttk.Entry(lb5)
+lb5et3.grid(row=3, column=1, sticky=EW, padx=5, pady=5)
+lb5et4 = ttk.Entry(lb5)
+lb5et4.grid(row=4, column=1, sticky=EW, padx=5, pady=5)
 
 lb6.columnconfigure(index=0, weight=1)
 lb6.columnconfigure(index=1, weight=1)
@@ -251,13 +259,13 @@ lb6bt2.grid(row=0, column=1, sticky=EW, padx=5, pady=5, ipady=5)
 lb6bt3 = ttk.Button(lb6, text="开始", command=launch)
 lb6bt3.grid(row=1, column=0, sticky=EW, padx=5, pady=5, ipady=10, columnspan=2)
 
-str1 = "设置屏幕的宽度，单位像素。\n过大的尺寸可能导致帧数受限/UI过小。\n手机1080P: 1920x1080（16：9）\n平板1080P: 1440x1080（4：3）"
-str2 = "设置屏幕的高度，单位像素。\n过大的尺寸可能导致帧数受限/UI过小。\n手机1080P: 1920x1080（16：9）\n平板1080P: 1440x1080（4：3）"
+str1 = "设置屏幕的宽度，单位：像素。\n过大的尺寸可能导致帧数受限/UI过小。\n手机1080P: 1920x1080（16：9）\n平板1080P: 1440x1080（4：3）"
+str2 = "设置屏幕的高度，单位：像素。\n过大的尺寸可能导致帧数受限/UI过小。\n手机1080P: 1920x1080（16：9）\n平板1080P: 1440x1080（4：3）"
 ToolTip(lb2et1, str1)
 ToolTip(lb2et2, str1)
 
-str3 = "设置键的大小，单位像素。\n推荐设置为屏幕宽度的1/10~1/8。"
-str4 = "设置击中特效的大小，单位像素。\n推荐设置为屏幕宽度的1/8~1/6。"
+str3 = "设置键的大小，单位：像素。\n推荐设置为屏幕宽度的1/10~1/8。"
+str4 = "设置击中特效的大小，单位：像素。\n推荐设置为屏幕宽度的1/8~1/6。"
 ToolTip(lb2et3, str3)
 ToolTip(lb2et4, str4)
 
@@ -267,6 +275,53 @@ str7 = "显示在右下角的文字。\n常设置为难度。"
 ToolTip(lb1et4, str5)
 ToolTip(lb1et5, str6)
 ToolTip(lb1et6, str7)
+
+str8 = "此功能尚不稳定，谨慎开启！"
+str9 = "键下落的流速，不会影响BPM。\n开启立体模式后，由于视野内note的数量增加，\n若不提高流速就会出现“读谱不能”的现象。\n默认值为 2.5（倍速）。"
+str10 = "键出现的位置（对应2D谱中距离判定线的位置）。\n单位：像素\n推荐值介于1~2倍窗口高度之间。"
+str11 = "摄像机到判定线的水平距离，\n单位：Y（1Y=0.6*屏幕高度）。\n此值越大，摄像机越靠后，谱面所在的平面看起来越平，看到的键就越多。\n默认值为 1.0，安全区间为 (0.5, 4]"
+str12 = "摄像机相对于平面的垂直高度，\n单位：Y（1Y=0.6*屏幕高度）。\n此值越大，视角越高；越接近俯视，能看到键就越少。\n默认值为 1.0，安全区间为 (0.5, 4]"
+ToolTip(lb5ck1, str8)
+ToolTip(lb5et1, str9)
+ToolTip(lb5et2, str10)
+ToolTip(lb5et3, str11)
+ToolTip(lb5et4, str12)
+
+str13 = "此功能尚不稳定，谨慎开启！"
+str14 = "此功能暂时受限，不允许修改。"
+str15 = "此功能暂时受限，不允许修改。"
+str16 = "此值应当介于0~1（不含端点）之间。\n默认值为 0.2"
+ToolTip(lb4ck1, str13)
+ToolTip(lb4et1, str14)
+ToolTip(lb4et2, str15)
+ToolTip(lb4et3, str16)
+
+str17 = "默认值为 60。\n此值不应过小，推荐值为60~90。\n*请注意，击中特效是固定的42帧。\n*在B站投稿时请确保分辨率不低于1080P，以免帧数受限。"
+str18 = "音乐与谱面之间的时差。单位：秒\n当此值为正时，谱面会延后开始，此值可正可负。"
+str19 = "背景图面的亮度。\n此值为0时，画面最暗；\n此值为1时，画面最暗；\n此值超出0~1范围时，程序崩溃。"
+str20 = "对曲绘进行高斯模糊，此值为模糊半径。请勿调整。"
+ToolTip(lb3et1, str17)
+ToolTip(lb3et2, str18)
+ToolTip(lb3et3, str19)
+ToolTip(lb3et4, str20)
+
+str21 = "隐藏所有文字、进度条。"
+str22 = "输出调试信息。\n可能导致帧数下降。"
+ToolTip(lb3ck1, str21)
+ToolTip(lb3ck2, str22)
+
+str23 = "json\n仅支持官谱！\n请点击右下方“打开文件夹”。"
+str24 = "wav/mp3"
+str25 = "jpg/png"
+ToolTip(lb1et1, str23)
+ToolTip(lb1et2, str24)
+ToolTip(lb1et3, str25)
+
+setEntry(lb4et1, "DISABLED")
+setEntry(lb4et2, "DISABLED")
+lb4et1.config(state=DISABLED)
+lb4et2.config(state=DISABLED)
+
 
 if __name__ == '__main__':
     defaultArgs()

@@ -404,6 +404,15 @@ class Player:
         self.my2: int | None = None
         self.mw: int | None = None
         self.mh: int | None = None
+        # 3D
+        self.enable3D = False
+        # 3D倍速
+        self.speed: float = 2.5
+        # 渲染最远处
+        self.boundary: float = self.height * 1.0
+        # 摄像头位置
+        self.b: float = 1
+        self.h: float = 1
 
         ### 固有对象
 
@@ -552,16 +561,29 @@ class Player:
                     dy = (note.floorPos - line.pos(self.timeT)) * self.Y
                     dyt = dy + (note.speed * note.holdTime * 1.875 / line.bpm) * self.Y
 
+                if self.enable3D:
+                    # 3D修正
+                    dyo = dy
+                    dyto = dyt
+                    dy = dy * self.speed
+                    dyt = dyt * self.speed
+                    dxt = dx * (self.Y * self.b / (dyt + self.Y * self.b))
+                    dx = dx * (self.Y * self.b / (dy + self.Y * self.b))
+                    dy = (dy * self.Y * self.h) / (self.Y * self.b + dy)
+                    dyt = (dyt * self.Y * self.h) / (self.Y * self.b + dyt)
+                else:
+                    dxt = dx
+
                 if note.above:
                     xn = x + dx * Vcos - dy * Vsin
                     yn = y + dx * Vsin + dy * Vcos
-                    xnt = x + dx * Vcos - dyt * Vsin
-                    ynt = y + dx * Vsin + dyt * Vcos
+                    xnt = x + dxt * Vcos - dyt * Vsin
+                    ynt = y + dxt * Vsin + dyt * Vcos
                 else:
                     xn = x + dx * Vcos + dy * Vsin
                     yn = y + dx * Vsin - dy * Vcos
-                    xnt = x + dx * Vcos + dyt * Vsin
-                    ynt = y + dx * Vsin - dyt * Vcos
+                    xnt = x + dxt * Vcos + dyt * Vsin
+                    ynt = y + dxt * Vsin - dyt * Vcos
 
                 # 根据时间判断，跳过渲染还是添加特效
                 frameDelta = 0.5 / self.FPS * self.BPM / 1.875 * 0
@@ -579,14 +601,23 @@ class Player:
                     note.begin = True
                     self.tapSound.play()
 
-                x1 = int(xn - Vcos * self.noteSize / 2)
-                y1 = int(yn - Vsin * self.noteSize / 2)
-                x2 = int(xn + Vcos * self.noteSize / 2)
-                y2 = int(yn + Vsin * self.noteSize / 2)
-                x3 = int(xnt - Vcos * self.noteSize / 2)
-                y3 = int(ynt - Vsin * self.noteSize / 2)
-                x4 = int(xnt + Vcos * self.noteSize / 2)
-                y4 = int(ynt + Vsin * self.noteSize / 2)
+                if self.enable3D and dyo > self.boundary:
+                    continue
+
+                if self.enable3D:
+                    ns1 = self.noteSize * (self.Y * self.b / (dyo + self.Y * self.b))
+                    nst = self.noteSize * (self.Y * self.b / (dyto + self.Y * self.b))
+                else:
+                    ns1, nst = self.noteSize, self.noteSize
+
+                x1 = int(xn - Vcos * ns1 / 2)
+                y1 = int(yn - Vsin * ns1 / 2)
+                x2 = int(xn + Vcos * ns1 / 2)
+                y2 = int(yn + Vsin * ns1 / 2)
+                x3 = int(xnt - Vcos * nst / 2)
+                y3 = int(ynt - Vsin * nst / 2)
+                x4 = int(xnt + Vcos * nst / 2)
+                y4 = int(ynt + Vsin * nst / 2)
 
                 y1 = self.height - y1
                 y2 = self.height - y2
@@ -603,7 +634,10 @@ class Player:
                     y3 = self.mappingY(y3)
                     y4 = self.mappingY(y4)
 
-                self.holdRender(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
+                if self.enable3D:
+                    self.holdRender3D(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
+                else:
+                    self.holdRender(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
                 # pygame.draw.polygon(self.foreground_layer, self.BLACK, ((x1, y1), (x2, y2), (x3, y3), (x4, y4)))
 
         self.holdCost = mytimer("hold")
@@ -625,6 +659,13 @@ class Player:
 
                 dx = note.posX * self.X
                 dy = note.speed * (note.floorPos - line.pos(self.timeT)) * self.Y
+
+                if self.enable3D:
+                    # 3D修正
+                    dyo = dy
+                    dy = dy * self.speed
+                    dx = dx * (self.Y * self.b / (dy + self.Y * self.b))
+                    dy = (dy * self.h * self.Y) / (self.Y * self.b + dy)
 
                 if note.above:
                     xn = x + dx * Vcos - dy * Vsin
@@ -650,6 +691,9 @@ class Player:
                     elif note.type_ == 4:
                         self.flickSound.play()
 
+                if self.enable3D and (dyo > self.boundary or dy < 0):
+                    continue
+
                 if self.enableMapping:
                     xn = self.mappingX(xn)
                     yn = self.mappingY(yn)
@@ -673,6 +717,17 @@ class Player:
                         surface = self.images.drag(r)
                     elif note.type_ == 4:
                         surface = self.images.flick(r)
+
+                if self.enable3D:
+                    try:
+                        sr = self.Y * self.b / (dyo + self.Y * self.b)
+                        # sr = self.Y / (dy + self.Y)
+                        surface = pygame.transform.scale(
+                            surface,
+                            (surface.get_width() * sr, surface.get_height() * sr),
+                        )
+                    except ValueError as e:
+                        print(f"渲染错误: {e}, note: {note}, timeT: {self.timeT}, xn: {xn}, yn: {yn}")
 
                 x0 = int(xn - surface.get_width() / 2)
                 y0 = int(yn + surface.get_height() / 2)
@@ -832,6 +887,84 @@ class Player:
 
             self.foreground_layer.blit(image, (minX, minY))
             self.holdCount += 1
+
+    def holdRender3D(self, x1, x2, x3, x4, y1, y2, y3, y4, angle: float, above):
+
+        aw = x4 - x3
+        a1 = x3 + aw * 0.00
+        a2 = x3 + aw * 0.02
+        a3 = x3 + aw * 0.08
+        a4 = x3 + aw * 0.15
+        a5 = x3 + aw * 0.20
+        a6 = x3 + aw * 0.80
+        a7 = x3 + aw * 0.85
+        a8 = x3 + aw * 0.92
+        a9 = x3 + aw * 0.98
+        a0 = x3 + aw * 1.00
+
+        tw = x2 - x1
+        t1 = x1 + tw * 0.00
+        t2 = x1 + tw * 0.02
+        t3 = x1 + tw * 0.08
+        t4 = x1 + tw * 0.15
+        t5 = x1 + tw * 0.20
+        t6 = x1 + tw * 0.80
+        t7 = x1 + tw * 0.85
+        t8 = x1 + tw * 0.92
+        t9 = x1 + tw * 0.98
+        t0 = x1 + tw * 1.00
+
+        ah = y4 - y3
+        ay1 = y3 + ah * 0.00
+        ay2 = y3 + ah * 0.02
+        ay3 = y3 + ah * 0.08
+        ay4 = y3 + ah * 0.15
+        ay5 = y3 + ah * 0.20
+        ay6 = y3 + ah * 0.80
+        ay7 = y3 + ah * 0.85
+        ay8 = y3 + ah * 0.92
+        ay9 = y3 + ah * 0.98
+        ay0 = y3 + ah * 1.00
+
+        th = y2 - y1
+        ty1 = y1 + th * 0.00
+        ty2 = y1 + th * 0.02
+        ty3 = y1 + th * 0.08
+        ty4 = y1 + th * 0.15
+        ty5 = y1 + th * 0.20
+        ty6 = y1 + th * 0.80
+        ty7 = y1 + th * 0.85
+        ty8 = y1 + th * 0.92
+        ty9 = y1 + th * 0.98
+        ty0 = y1 + th * 1.00
+
+
+
+        # 绘制白色多边形
+        pygame.draw.polygon(
+            self.foreground_layer, (255, 255, 255),
+            ((t1, ty1), (t2, ty2), (a2, ay2), (a1, ay1),)
+        )
+
+        pygame.draw.polygon(
+            self.foreground_layer, (255, 255, 255),
+            ((t0, ty0), (t9, ty9), (a9, ay9), (a0, ay0),)
+        )
+
+        pygame.draw.polygon(
+            self.foreground_layer, (212, 255, 255, 200),
+            ((t3, ty3), (t8, ty8), (a8, ay8), (a3, ay3),)
+        )
+
+        pygame.draw.polygon(
+            self.foreground_layer, (212, 255, 255),
+            ((t4, ty4), (t5, ty5), (a5, ay5), (a4, ay4),)
+        )
+
+        pygame.draw.polygon(
+            self.foreground_layer, (212, 255, 255),
+            ((t6, ty6), (t7, ty7), (a7, ay7), (a6, ay6),)
+        )
 
     def is_rect_off_screen(self, x1, y1, x2, y2):
         left = min(x1, x2)

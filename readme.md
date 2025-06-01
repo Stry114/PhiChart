@@ -8,14 +8,19 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
  - pygame
  - numpy
 
-$\surd\left(\dfrac 1 2\right)$
-
 # 运行
+### 方法一
+转到右侧`Release`下载启动器，通过启动器启动。或下载整个项目，运行`launcher.py`。
+![](readme/launcher.png)
+
+### 方法二
 1. 安装所需的依赖库。
 2. 打开并运行`demo.py`即可。
 
+
 # 自定义参数
 Player提供了丰富的自定义参数，允许用户实现各种奇特的功能。
+想要自定义参数，请使用上述**方法二**。
 ### 1. 默认参数
 打开`demo.py`
 ```python
@@ -92,7 +97,7 @@ from autoMatch import Matcher
 
 
 player = Player(Matcher("charts/rr/"), w=1200, h=800)
-player.targetRectOfMapping = (300, 200, 900, 600)
+# player.targetRectOfMapping = (300, 200, 900, 600)  # 此参数暂时受限，不允许自定义
 player.initPlayer()
 player.mainloop()
 ```
@@ -106,4 +111,10 @@ player = Player(Matcher("charts/rr/"), brightness=0.8, blurRadius=20)
 设置背景图的亮度和模糊程度。
  - 亮度为0（最暗）~1（最亮）
  - 使用的是先压缩，再高斯模糊。
+
+### 8.立体谱面
+在启动器中勾选“立体铺面”启用。此功能尚不完善。
+
+图为Retribution SP预览效果。
+![](readme/3d.png)
 
