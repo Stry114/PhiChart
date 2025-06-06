@@ -117,6 +117,9 @@ class Line:
 
         self.noteList: list[Note] = []
 
+        # 运行时变量
+        self.cmrH: float = 1.0
+
     def addNote(self, note: Note):
         self.noteList.append(note)
 

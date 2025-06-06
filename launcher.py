@@ -10,6 +10,7 @@ import pygame
 import player
 from libs.toolTip import ToolTip
 from player import Player
+from analyzer import analyzeJson
 from autoMatch import Matcher
 
 top = Tk()
@@ -98,7 +99,7 @@ def runningThread():
             if lb5et2.get() != "":
                 player.boundary = float(lb5et2.get())
             if lb5et3.get() != "":
-                player.b = float(lb5et3.get())
+                player.cmrB = float(lb5et3.get())
             if lb5et4.get() != "":
                 player.h = float(lb5et4.get())
 
@@ -141,6 +142,33 @@ def defaultArgs(*args):
     lb3int2.set(0)
     lb4int1.set(0)
     lb5int1.set(0)
+
+def selectLines(*args):
+    chart = analyzeJson(lb1et1.get())
+
+    root = Toplevel()
+    root.config(padx=20, pady=20)
+    root.geometry("800x600")
+    intVarList = []
+    checkboxList = []
+
+    for i in range(len(chart.lineList)):
+        line = chart.lineList[i]
+        noteNum = len(line.noteList)
+        moveNum = len(line.move1.startTimeList)
+        speedNum = len(line.speed.startTimeList)
+        alphaNum = len(line.alpha.startTimeList)
+        rotationNum = len(line.rotate.startTimeList)
+
+        intVar = IntVar(value=0)
+        intVarList.append(intVar)
+        checkBox = ttk.Checkbutton(root, text=f"Line{i}\t{noteNum} notes    "
+                                              f"\t{speedNum} speed events"
+                                              f"\t{moveNum} move events"
+                                              f"\t{alphaNum} alpha events"
+                                              f"\t{rotationNum} rotate events.", variable=intVar)
+        checkBox.pack(side=TOP, anchor=W, fill=X)
+        checkboxList.append(checkBox)
 
 fr1 = Frame(top)
 fr1.pack(side=LEFT, fill=BOTH, expand=True)
@@ -235,8 +263,11 @@ lb4et3.grid(row=3, column=1, sticky=EW, padx=5, pady=5)
 
 lb5.columnconfigure(index=1, weight=1)
 lb5int1 = IntVar()
+lb5int2 = IntVar()
 lb5ck1 = ttk.Checkbutton(lb5, variable=lb5int1, text="启用立体谱面")
 lb5ck1.grid(row=0, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
+lb5ck2 = ttk.Checkbutton(lb5, variable=lb5int2, text="仅对部分判定线生效")
+lb5ck2.grid(row=5, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
 Label(lb5, text="流速（下落倍速）").grid(row=1, column=0)
 Label(lb5, text="Note出现的位置").grid(row=2, column=0)
 Label(lb5, text="摄像机水平位置").grid(row=3, column=0)
@@ -249,6 +280,8 @@ lb5et3 = ttk.Entry(lb5)
 lb5et3.grid(row=3, column=1, sticky=EW, padx=5, pady=5)
 lb5et4 = ttk.Entry(lb5)
 lb5et4.grid(row=4, column=1, sticky=EW, padx=5, pady=5)
+lb5bt1 = ttk.Button(lb5ck2, text="选取", command=selectLines)
+lb5bt1.pack(side=RIGHT, fill=Y)
 
 lb6.columnconfigure(index=0, weight=1)
 lb6.columnconfigure(index=1, weight=1)
@@ -278,14 +311,16 @@ ToolTip(lb1et6, str7)
 
 str8 = "此功能尚不稳定，谨慎开启！"
 str9 = "键下落的流速，不会影响BPM。\n开启立体模式后，由于视野内note的数量增加，\n若不提高流速就会出现“读谱不能”的现象。\n默认值为 2.5（倍速）。"
-str10 = "键出现的位置（对应2D谱中距离判定线的位置）。\n单位：像素\n推荐值介于1~2倍窗口高度之间。"
-str11 = "摄像机到判定线的水平距离，\n单位：Y（1Y=0.6*屏幕高度）。\n此值越大，摄像机越靠后，谱面所在的平面看起来越平，看到的键就越多。\n默认值为 1.0，安全区间为 (0.5, 4]"
-str12 = "摄像机相对于平面的垂直高度，\n单位：Y（1Y=0.6*屏幕高度）。\n此值越大，视角越高；越接近俯视，能看到键就越少。\n默认值为 1.0，安全区间为 (0.5, 4]"
+str10 = "键出现的位置（对应2D谱中距离判定线的位置）。\n单位：像素\n推荐值介于2~4倍窗口高度之间。"
+str11 = "启动器暂未适配此版本"
+str12 = "启动器暂未适配此版本"
+str26 = "启动器暂未适配此版本"
 ToolTip(lb5ck1, str8)
 ToolTip(lb5et1, str9)
 ToolTip(lb5et2, str10)
 ToolTip(lb5et3, str11)
 ToolTip(lb5et4, str12)
+ToolTip(lb5ck2, str26)
 
 str13 = "此功能尚不稳定，谨慎开启！"
 str14 = "此功能暂时受限，不允许修改。"
@@ -319,8 +354,12 @@ ToolTip(lb1et3, str25)
 
 setEntry(lb4et1, "DISABLED")
 setEntry(lb4et2, "DISABLED")
+setEntry(lb5et3, "DISABLED")
+setEntry(lb5et4, "DISABLED")
 lb4et1.config(state=DISABLED)
 lb4et2.config(state=DISABLED)
+lb5et3.config(state=DISABLED)
+lb5et4.config(state=DISABLED)
 
 
 if __name__ == '__main__':
