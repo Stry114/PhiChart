@@ -5,7 +5,6 @@ import math
 import wave
 
 import cv2
-import numpy as np
 
 import analyzer
 import chart
@@ -411,7 +410,7 @@ class Player:
         # 3D倍速
         self.speed: float = 2.5
         # 渲染最远处
-        self.boundary: float = self.height * 1.0
+        self.boundary: float = self.height * 3.0
         # 摄像头位置（设定值）
         self.cmrB: float = 1.0
         self.cmrH: float = 1.0
@@ -1224,6 +1223,7 @@ class Player:
         # 初始化 pygame
         pygame.init()
         pygame.mixer.pre_init(44100, -16, 2, 512)
+        pygame.mixer.set_num_channels(32)
 
         # 初始化营销
         self.tapSound = pygame.mixer.Sound("assets/click.wav")

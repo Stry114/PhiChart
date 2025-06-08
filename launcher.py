@@ -14,7 +14,7 @@ from analyzer import analyzeJson
 from autoMatch import Matcher
 
 top = Tk()
-top.title("PhiChart Launcher")
+top.title("PhiChart Launcher v0.1 by Stry")
 top.minsize(width=400, height=500)
 top.config(padx=20, pady=20)
 
@@ -99,9 +99,11 @@ def runningThread():
             if lb5et2.get() != "":
                 player.boundary = float(lb5et2.get())
             if lb5et3.get() != "":
-                player.cmrB = float(lb5et3.get())
+                player.cmrX = float(lb5et3.get())
             if lb5et4.get() != "":
-                player.h = float(lb5et4.get())
+                player.cmrY = float(lb5et4.get())
+            if lb5et5.get() != "":
+                player.b = float(lb5et5.get())
 
         player.initPlayer()
         player.mainloop()
@@ -267,11 +269,12 @@ lb5int2 = IntVar()
 lb5ck1 = ttk.Checkbutton(lb5, variable=lb5int1, text="启用立体谱面")
 lb5ck1.grid(row=0, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
 lb5ck2 = ttk.Checkbutton(lb5, variable=lb5int2, text="仅对部分判定线生效")
-lb5ck2.grid(row=5, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
+lb5ck2.grid(row=6, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
 Label(lb5, text="流速（下落倍速）").grid(row=1, column=0)
 Label(lb5, text="Note出现的位置").grid(row=2, column=0)
 Label(lb5, text="摄像机水平位置").grid(row=3, column=0)
 Label(lb5, text="摄像机垂直位置").grid(row=4, column=0)
+Label(lb5, text="摄像机前后位置").grid(row=5, column=0)
 lb5et1 = ttk.Entry(lb5)
 lb5et1.grid(row=1, column=1, sticky=EW, padx=5, pady=5)
 lb5et2 = ttk.Entry(lb5)
@@ -280,6 +283,8 @@ lb5et3 = ttk.Entry(lb5)
 lb5et3.grid(row=3, column=1, sticky=EW, padx=5, pady=5)
 lb5et4 = ttk.Entry(lb5)
 lb5et4.grid(row=4, column=1, sticky=EW, padx=5, pady=5)
+lb5et5 = ttk.Entry(lb5)
+lb5et5.grid(row=5, column=1, sticky=EW, padx=5, pady=5)
 lb5bt1 = ttk.Button(lb5ck2, text="选取", command=selectLines)
 lb5bt1.pack(side=RIGHT, fill=Y)
 
@@ -312,14 +317,16 @@ ToolTip(lb1et6, str7)
 str8 = "此功能尚不稳定，谨慎开启！"
 str9 = "键下落的流速，不会影响BPM。\n开启立体模式后，由于视野内note的数量增加，\n若不提高流速就会出现“读谱不能”的现象。\n默认值为 2.5（倍速）。"
 str10 = "键出现的位置（对应2D谱中距离判定线的位置）。\n单位：像素\n推荐值介于2~4倍窗口高度之间。"
-str11 = "启动器暂未适配此版本"
-str12 = "启动器暂未适配此版本"
+str11 = "摄像机的水平位置。单位：像素。\n坐标原点位于屏幕左下角，向右为水平正方向。\n此值应介于0~屏幕宽度之间，推荐将摄像机放在屏幕中间偏上的位置。"
+str12 = "摄像机的垂直位置。单位：像素。\n坐标原点位于屏幕左下角，向上为垂直正方向。\n此值应介于0~屏幕高度之间，推荐将摄像机放在屏幕中间偏上的位置。"
+str27 = "摄像机的到屏幕的距离（垂直屏幕向外）。单位：Y。\n默认值为1.0，不建议修改此值。\n摄像机距离屏幕越远，视角越低。"
 str26 = "启动器暂未适配此版本"
 ToolTip(lb5ck1, str8)
 ToolTip(lb5et1, str9)
 ToolTip(lb5et2, str10)
 ToolTip(lb5et3, str11)
 ToolTip(lb5et4, str12)
+ToolTip(lb5et5, str27)
 ToolTip(lb5ck2, str26)
 
 str13 = "此功能尚不稳定，谨慎开启！"
@@ -354,12 +361,8 @@ ToolTip(lb1et3, str25)
 
 setEntry(lb4et1, "DISABLED")
 setEntry(lb4et2, "DISABLED")
-setEntry(lb5et3, "DISABLED")
-setEntry(lb5et4, "DISABLED")
 lb4et1.config(state=DISABLED)
 lb4et2.config(state=DISABLED)
-lb5et3.config(state=DISABLED)
-lb5et4.config(state=DISABLED)
 
 
 if __name__ == '__main__':
