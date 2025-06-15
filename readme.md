@@ -1,11 +1,24 @@
+
+# 此分支
+ - 添加了对RPE自制谱的部分支持，自制谱将被尝试转译为官谱后运行。
+ - 因此，PhiChart并不支持官谱中所不支持的功能（键透明度、非线性事件、故事版等等），但转译功能将仅作为过渡，后续会逐渐支持各种自制谱功能。
+### 转译器
+转译工作将自动完成，你也可以使用以下代码单独调用转译器：
+```python
+from RPEanalyzer import analyzeJson
+
+chart = analyzeJson("xxx/xxx.json（自制谱路径）")
+f = open("xxx/output.json（导出路径）", "w", encoding="utf-8")
+f.write(chart.toJson())
+f.close()
+```
+
+
 # PhiChart
 A Phigros emulator based on python pygame.
 一个基于Pygame的Phigros模拟器。
 
 Player提供了丰富的自定义参数，允许用户实现各种奇特的功能，诸如谱面解密、竖屏模式等。
-
-# 此分支
-添加了对RPE自制乐谱的部分支持谱的部分支持，自制谱将被转译为官谱后尝试运行。
 
 # 依赖
  - pygame
