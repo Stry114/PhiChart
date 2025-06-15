@@ -4,6 +4,9 @@ A Phigros emulator based on python pygame.
 
 Player提供了丰富的自定义参数，允许用户实现各种奇特的功能，诸如谱面解密、竖屏模式等。
 
+# 此分支
+添加了对RPE自制乐谱的部分支持谱的部分支持，自制谱将被转译为官谱后尝试运行。
+
 # 依赖
  - pygame
  - numpy
