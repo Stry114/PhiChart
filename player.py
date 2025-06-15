@@ -591,6 +591,8 @@ class Player:
                     dx = note.posX * self.X
                     dy = (note.floorPos - line.pos(self.timeT)) * self.Y
                     dyt = dy + (note.speed * note.holdTime * 1.875 / line.bpm) * self.Y
+                if self.chart.RPE_Chart:
+                    dyt = (note.floorPosT - line.pos(self.timeT)) * self.Y
 
                 if self.enable3D:
 

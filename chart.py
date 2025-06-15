@@ -6,7 +6,7 @@ class LineTimer:
         self.endValueList = []
         self.startTimeList = []
         self.startValueList = []
-    
+
     def second(self, time_, baseBPM=None):
         if baseBPM is None:
             return time_ / self.bpm * 1.875
@@ -34,7 +34,7 @@ class LineTimer:
         m1 = max(self.startValueList)
         m2 = max(self.endValueList)
         return max(m1, m2)
-    
+
     def min(self):
         m1 = min(self.startValueList)
         m2 = min(self.endValueList)
@@ -44,7 +44,7 @@ class LineTimer:
         for i in range(self.peroidCount):
             s = self.startTimeList[i]
             e = self.endTimeList[i]
-            if not  s <= time_ < e:
+            if not s <= time_ < e:
                 continue
             d = (time_ - s) / (e - s)
             a = self.startValueList[i]
@@ -79,6 +79,7 @@ class SpeedEvent:
         self.endTimeList = []
         self.startTimeList = []
 
+
 class Note:
     def __init__(self, type_, time_, posX, floorPos, speed=1, holdTime=0, above=True):
         self.posX = posX
@@ -88,6 +89,7 @@ class Note:
         self.above = above
         self.holdTime = holdTime
         self.floorPos = floorPos
+        self.floorPosT: float | None = None
 
         self.hit = False
         self.begin = False
@@ -124,14 +126,14 @@ class Line:
         self.noteList.append(note)
 
     def report(self, level=0, index=0):
-        print(" "*4*level + "<line>", index)
+        print(" " * 4 * level + "<line>", index)
         level += 1
-        print(" "*4*level + f"bpm\t{self.bpm}")
-        print(" "*4*level + f"move1\t{self.move1.peroidCount}\t[{self.move1.min()}, {self.move1.max()}]")
-        print(" "*4*level + f"move2\t{self.move2.peroidCount}\t[{self.move2.min()}, {self.move2.max()}]")
-        print(" "*4*level + f"alpha\t{self.alpha.peroidCount}\t[{self.alpha.min()}, {self.alpha.max()}]")
-        print(" "*4*level + f"speed\t{self.speed.peroidCount}\t[{self.speed.min()}, {self.speed.max()}]")
-        print(" "*4*level + f"rotate\t{self.rotate.peroidCount}\t[{self.rotate.min()}, {self.rotate.max()}]")
+        print(" " * 4 * level + f"bpm\t{self.bpm}")
+        print(" " * 4 * level + f"move1\t{self.move1.peroidCount}\t[{self.move1.min()}, {self.move1.max()}]")
+        print(" " * 4 * level + f"move2\t{self.move2.peroidCount}\t[{self.move2.min()}, {self.move2.max()}]")
+        print(" " * 4 * level + f"alpha\t{self.alpha.peroidCount}\t[{self.alpha.min()}, {self.alpha.max()}]")
+        print(" " * 4 * level + f"speed\t{self.speed.peroidCount}\t[{self.speed.min()}, {self.speed.max()}]")
+        print(" " * 4 * level + f"rotate\t{self.rotate.peroidCount}\t[{self.rotate.min()}, {self.rotate.max()}]")
 
     def pos(self, time_):
         pos = 0
@@ -214,9 +216,11 @@ class Line:
             "}"
         )
 
+
 class Chart:
-    def __init__(self):
+    def __init__(self, RPE_Chart=False):
         self.bpm = None
+        self.RPE_Chart = RPE_Chart
         self.noteCount = 0
         self.lineList: list[Line] = []
         self.noteList: list[Note] = []
@@ -228,10 +232,10 @@ class Chart:
         self.noteList.extend(line.noteList)
 
     def report(self, level=0):
-        print(" "*4*level + "<chart>")
-        print(" "*4*(level+1) + f"line\t{len(self.lineList)}")
+        print(" " * 4 * level + "<chart>")
+        print(" " * 4 * (level + 1) + f"line\t{len(self.lineList)}")
         for i in range(len(self.lineList)):
-            self.lineList[i].report(level+1, i)
+            self.lineList[i].report(level + 1, i)
 
     @property
     def fullCombo(self):

@@ -2,7 +2,7 @@ from player import Player
 from autoMatch import Matcher
 
 
-player = Player(Matcher("charts/幻影鬼魅（PLEASE）AT"), w=1920, h=1080, fps=120)
+player = Player(Matcher("charts/领土战争AT"), w=1000, h=800, fps=120, debug=True)
 
 # 设置副标题
 player.name = "幻影鬼魅（PLEASE）"
@@ -25,6 +25,5 @@ player.noteSize = player.width / 8
 player.hitEffectSize = player.width / 6
 
 # 初始化并进入消息循环
-# player.startTimeS = 60
 player.initPlayer()
 player.mainloop()

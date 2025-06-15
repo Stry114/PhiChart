@@ -1,5 +1,6 @@
 import json
 import chart as ch
+import RPEanalyzer
 
 
 def analyzeJson(jsonFile: str):
@@ -7,6 +8,9 @@ def analyzeJson(jsonFile: str):
     chart_ = json.load(f)
     chart = ch.Chart()
     f.close()
+
+    if "META" in chart_ and "RPEVersion" in chart_["META"]:
+        return RPEanalyzer.analyzeJson(jsonFile)
 
     for line_ in chart_["judgeLineList"]:
         bpm = float(line_["bpm"])
