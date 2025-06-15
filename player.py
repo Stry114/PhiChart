@@ -224,7 +224,7 @@ class PreRendCache:
 
         # 击中特效
         self.hitOriginalImage = pygame.image.load("assets/Hit.png").convert_alpha()
-        self.hitOriginalImage = colorize_grayscale(self.hitOriginalImage, (254, 255, 169))
+        self.hitOriginalImage = colorize_grayscale(self.hitOriginalImage, (255, 243, 163))
         self.hitOriginalImage = pygame.transform.smoothscale(self.hitOriginalImage, (hitWidth * 7, hitWidth * 6))
         self.hitImageWidth = self.hitOriginalImage.get_width()
         self.hitImageHeight = self.hitOriginalImage.get_height()
@@ -553,7 +553,7 @@ class Player:
 
             if not skip and a > 0.01:
                 self.lineCount += 1
-                color = (254, 255, 169, int(255 * a))
+                color = (254, 255, 169, min(int(255 * a), 255))
                 pygame.draw.line(
                     self.foreground_layer, color,
                     start_pos=(x1, y1),
@@ -562,7 +562,8 @@ class Player:
                 )
 
             if self.enable3D:
-                line.cmrH = abs(math.sin(math.radians(r)) * (self.cmrX - x) - math.cos(math.radians(r)) * (self.cmrY -y)) / self.Y
+                line.cmrDx = -math.cos(math.radians(r)) * (self.cmrX - x) - math.sin(math.radians(r)) * (self.height - self.cmrY -y)
+                line.cmrH = -(math.sin(math.radians(r)) * (self.cmrX - x) - math.cos(math.radians(r)) * (self.height - self.cmrY -y)) / self.Y
 
         self.lineCost = mytimer("判定线")
 
@@ -592,15 +593,29 @@ class Player:
                     dyt = dy + (note.speed * note.holdTime * 1.875 / line.bpm) * self.Y
 
                 if self.enable3D:
+
+                    xt = x + dx * Vcos
+                    yt = y + dx * Vsin
+                    if not (-self.noteSize*0.5 < xt < self.width+self.noteSize*0.5
+                            and -self.noteSize*0.5 < yt < self.height+self.noteSize*0.5):
+                        continue
+
                     # 3D修正
                     dyo = dy * self.speed
-                    dyto = dyt * self.speed
+                    dyto = min(dyt * self.speed, self.boundary)
                     dy = dy * self.speed
-                    dyt = dyt * self.speed
-                    dxt = dx * (self.Y * self.cmrB / (dyto + self.Y * self.cmrB))
-                    dx = dx * (self.Y * self.cmrB / (dyo + self.Y * self.cmrB))
+                    dyt = min(dyt * self.speed, self.boundary)
+                    # dxt = dx * (self.Y * self.cmrB / (dyto + self.Y * self.cmrB))
+                    # dx = dx * (self.Y * self.cmrB / (dyo + self.Y * self.cmrB))
+                    dxt = dx - (dx + line.cmrDx) * (1 - self.Y * self.cmrB / (dyto + self.Y * self.cmrB))
+                    dx = dx - (dx + line.cmrDx) * (1 - self.Y * self.cmrB / (dyo + self.Y * self.cmrB))
                     dy = (dy * self.Y * self.h) / (self.Y * self.cmrB + dy)
                     dyt = (dyt * self.Y * self.h) / (self.Y * self.cmrB + dyt)
+
+                    if not note.above:
+                        dy = -dy
+                        dyt = -dyt
+
                 else:
                     dxt = dx
 
@@ -619,7 +634,7 @@ class Player:
                 frameDelta = 0.5 / self.FPS * self.BPM / 1.875 * 0
 
                 if note.time_ < self.timeT + frameDelta < note.time_ + note.holdTime:
-                    if self.frameIndex % 5 == 0:
+                    if self.frameIndex % 10 == 0:
                         effect = HitEffect(xn, yn)
                         self.hitEffectList.append(effect)
 
@@ -631,7 +646,7 @@ class Player:
                     note.begin = True
                     self.tapSound.play()
 
-                if self.enable3D and dyo > self.boundary:
+                if self.enable3D and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
                     continue
 
                 if self.enable3D:
@@ -692,11 +707,22 @@ class Player:
                 dy = note.speed * (note.floorPos - line.pos(self.timeT)) * self.Y
 
                 if self.enable3D:
+
+                    xt = x + dx * Vcos
+                    yt = y + dx * Vsin
+                    if not (-self.noteSize*0.5 < xt < self.width+self.noteSize*0.5
+                            and -self.noteSize*0.5 < yt < self.height+self.noteSize*0.5):
+                        continue
+
                     # 3D修正
                     dyo = dy * self.speed
                     dy = dy * self.speed
-                    dx = dx * (self.Y * self.cmrB / (dyo + self.Y * self.cmrB))
+                    # dx = dx * (self.Y * self.cmrB / (dyo + self.Y * self.cmrB))
+                    dx = dx - (dx + line.cmrDx) * (1 - self.Y * self.cmrB / (dyo + self.Y * self.cmrB))
                     dy = (dy * self.h * self.Y) / (self.Y * self.cmrB + dy)
+
+                    if not note.above:
+                        dy = -dy
 
                 if note.above:
                     xn = x + dx * Vcos - dy * Vsin
@@ -722,7 +748,7 @@ class Player:
                     elif note.type_ == 4:
                         self.flickSound.play()
 
-                if self.enable3D and (dyo > self.boundary):
+                if self.enable3D and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
                     continue
 
                 if self.enableMapping:
@@ -764,6 +790,15 @@ class Player:
                 x0 = int(xn - surface.get_width() / 2)
                 y0 = int(yn + surface.get_height() / 2)
                 y0 = self.height - y0
+
+                # 显示非 above 键
+                # if self.displayDebug and not note.above:
+                #     pygame.draw.rect(
+                #         self.foreground_layer,
+                #         rect=(x0, y0, surface.get_width(), surface.get_height()),
+                #         color=self.RED,
+                #         width=1,
+                #     )
 
                 self.foreground_layer.blit(surface, (x0, y0))
                 self.noteCount += 1
@@ -1325,16 +1360,7 @@ class Player:
             if note.time_ < self.timeT:
                 note.hit = True
 
-
         while running:
-
-            for times in self.lowerTimeS:
-                if times[0] <= self.timeS <= times[1]:
-                    pressDown = True
-                    break
-            else:
-                pressDown = False
-
             # 处理事件
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -1344,20 +1370,10 @@ class Player:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.pause = not self.pause
-                    if event.key == pygame.K_LSHIFT:
-                        pressDown = True
-                if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_LSHIFT:
-                        pressDown = False
 
             if self.pause:
                 clock.tick(self.FPS)
                 continue
-
-            # if pressDown:
-            #     self.h += (self.lower - self.h) * 0.01
-            # else:
-            #     self.h += (self.cmrH - self.h) * 0.01
 
             # 清空屏幕（用白色填充）
             # 绘制当前帧的所有内容
@@ -1369,7 +1385,7 @@ class Player:
                     self.UIrender()
             except Exception as e:
                 traceback.print_exc()
-                print(f"Render Error at timeT={self.timeT}")
+                print(f"Render Error at timeT={self.timeT}, timeS={self.timeS}")
 
             # 3. 更新显示
             self.screen.blit(self.background_layer, (0, 0))
