@@ -7,6 +7,7 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
 # 关于铺面格式的说明
 当前的稳定版本（`master`）只支持官谱。
 对RPE自制谱格式的支持正在实验中，请转到`feature/RPE_ChartFormation`分支。
+https://github.com/Stry114/PhiChart/tree/feature/RPE_ChartFormation
 
 # 依赖
  - pygame
