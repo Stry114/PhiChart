@@ -1,15 +1,14 @@
+import os
 import pygame
 import random
 import time
 import math
-import wave
-
 import cv2
-
 import analyzer
 import chart
 import autoMatch
 import traceback
+
 
 timerClock = time.time()
 running = False
@@ -28,17 +27,6 @@ def mytimer(msg: str):
 # def mytime() -> float:
 #     return tempFunction()*0.75
 # time.time = mytime
-
-
-def get_wav_duration(wav_path):
-    with wave.open(wav_path, 'rb') as wav_file:
-        # 获取帧数 (nframes) 和帧率 (framerate)
-        frames = wav_file.getnframes()
-        rate = wav_file.getframerate()
-
-        # 计算时长（秒）
-        duration = frames / float(rate)
-        return duration
 
 
 # 添加高斯模糊
@@ -235,6 +223,11 @@ class PreRendCache:
                         self.hitImageWidth / 7, self.hitImageHeight / 6)
                 surface = self.hitOriginalImage.subsurface(rect)
                 self.preRendHit.append(surface)
+
+        # for file in os.listdir("assets/hitEffect"):
+        #     image = pygame.image.load("assets/hitEffect/" + file).convert_alpha()
+        #     image = pygame.transform.smoothscale(image, (hitWidth, hitWidth))
+        #     self.preRendHit.append(image)
 
     def tap(self, angle) -> pygame.Surface:
         angle = int((angle + 180) % 180)
@@ -505,8 +498,8 @@ class Player:
         for effect in self.hitEffectList:
             for i in range(len(effect.xList)):
                 size = self.hitEffectSize // 20
-                color = (254, 255, 169, int(200 - 200 * effect.frame / 42))
-                rate = 1 - (effect.frame / 42 - 1) ** 4
+                color = (254, 255, 169, int(200 - 200 * effect.frame / len(self.images.preRendHit)))
+                rate = 1 - (effect.frame / len(self.images.preRendHit) - 1) ** 4
                 x = int(effect.x + effect.xList[i] * effect.rList[i] * self.hitEffectSize * rate)
                 y = int(effect.y + effect.yList[i] * effect.rList[i] * self.hitEffectSize * rate)
                 y = self.height - y
@@ -817,7 +810,7 @@ class Player:
 
             self.foreground_layer.blit(self.images.hit(effect.frame), (x, y))
             effect.frame += 1
-        self.hitEffectList = [effect for effect in self.hitEffectList if effect.frame < 42]
+        self.hitEffectList = [effect for effect in self.hitEffectList if effect.frame < len(self.images.preRendHit)]
 
         self.effectCost = mytimer("特效")
 
@@ -1267,9 +1260,6 @@ class Player:
         self.dragSound = pygame.mixer.Sound("assets/drag.wav")
         self.flickSound = pygame.mixer.Sound("assets/flick.wav")
 
-        # 计算音频长度
-        self.waveDurationS = get_wav_duration(self.audioFile)
-
         # 初始化映射
         if self.enableMapping:
             self.mx1 = self.targetRectOfMapping[0]
@@ -1335,6 +1325,7 @@ class Player:
 
         # 加载bgm
         pygame.mixer.music.load(self.audioFile)
+        self.waveDurationS = pygame.mixer.Sound(self.audioFile).get_length()
 
     def mainloop(self):
         global running
