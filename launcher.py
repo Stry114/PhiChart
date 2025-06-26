@@ -13,8 +13,10 @@ from player import Player
 from analyzer import analyzeJson
 from autoMatch import Matcher
 
+from assets.lang import ZH_CN as lang
+
 top = Tk()
-top.title("PhiChart Launcher v0.1 by Stry")
+top.title("PhiChart Launcher v0.2 by Stry")
 top.minsize(width=400, height=500)
 top.config(padx=20, pady=20)
 
