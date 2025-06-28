@@ -26,7 +26,7 @@ def analyzeJson(jsonFile: str):
 
     for line_ in chart_["judgeLineList"]:
         bpm = float(line_["bpmfactor"]) * chart.bpm
-        line = ch.Line(bpm)
+        line = ch.RPELine(bpm)
 
         # speed event
         for event in line_["eventLayers"][0]["speedEvents"]:
@@ -71,6 +71,36 @@ def analyzeJson(jsonFile: str):
                 float(event["end"])/255,
             )
 
+        # scale X event
+        if "scaleXEvents" in line_["extended"]:
+            for event in line_["extended"]["scaleXEvents"]:
+                line.scaleX.addPeriod(
+                    float(beatToTimeT(event["startTime"], line)),
+                    float(beatToTimeT(event["endTime"], line)),
+                    float(event["start"]),
+                    float(event["end"]),
+                )
+
+        # scale Y event
+        if "scaleYEvents" in line_["extended"]:
+            for event in line_["extended"]["scaleYEvents"]:
+                line.scaleY.addPeriod(
+                    float(beatToTimeT(event["startTime"], line)),
+                    float(beatToTimeT(event["endTime"], line)),
+                    float(event["start"]),
+                    float(event["end"]),
+                )
+
+        # scale Y event
+        if "colorEvents" in line_["extended"]:
+            for event in line_["extended"]["colorEvents"]:
+                line.color.addPeriod(
+                    float(beatToTimeT(event["startTime"], line)),
+                    float(beatToTimeT(event["endTime"], line)),
+                    event["start"],
+                    event["end"],
+                )
+
             # note
         if "notes" in line_:
             for note_ in line_["notes"]:
@@ -89,6 +119,7 @@ def analyzeJson(jsonFile: str):
                     speed=float(note_["speed"]),
                     posX=float(note_["positionX"])/75.951,
                 )
+                note.alpha = note_["alpha"]
                 if note.type_ == 3:
                     note.floorPosT = floorPosT
 

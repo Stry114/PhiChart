@@ -1,18 +1,4 @@
 
-# 此分支
- - 添加了对RPE自制谱的部分支持，自制谱将被尝试转译为官谱后运行。
- - 因此，PhiChart并不支持官谱中所不支持的功能（键透明度、非线性事件、故事版等等），但转译功能将仅作为过渡，后续会逐渐支持各种自制谱功能。
-### 转译器
-转译工作将自动完成，你也可以使用以下代码单独调用转译器：
-```python
-from RPEanalyzer import analyzeJson
-
-chart = analyzeJson("xxx/xxx.json（自制谱路径）")
-f = open("xxx/output.json（导出路径）", "w", encoding="utf-8")
-f.write(chart.toJson())
-f.close()
-```
-
 
 # PhiChart
 A Phigros emulator based on python pygame.
@@ -24,19 +10,26 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
  - pygame
  - numpy
 
-# 运行
+# 如何使用 PhiChart 渲染器
 ### 方法一
-转到右侧`Release`下载启动器，通过启动器启动。或下载整个项目，运行`launcher.py`。
-![](readme/launcher.png)
+转到右侧`Release`下载启动器，打开启动器。
+![](readme/new_launcher.png)
 
 ### 方法二
-1. 安装所需的依赖库。
-2. 打开并运行`demo.py`即可。
+1. 下载项目源码，安装所需的依赖库。
+2. 编写启动脚本（参考`demo.py`）。
+
+# 如何使用转谱器
+1. 转到右侧`Release`下载启动器，打开启动器。
+2. 勾选 `立体转谱与RPE选项` 中的 `启用转谱`。
+3. 解压谱面压缩包，点击 `打开文件夹` 并选中所在目录。
+4. 填写 `谱面信息` 和 `立体转谱与RPE选项` 中的各项信息。
+5. 点击 `开始`，静待转谱完成。
+![](readme/compiling.png)
 
 
-# 自定义参数
+# 编写启动脚本（不建议）
 Player提供了丰富的自定义参数，允许用户实现各种奇特的功能。
-想要自定义参数，请使用上述**方法二**。
 ### 1. 默认参数
 打开`demo.py`
 ```python
@@ -162,4 +155,18 @@ player.initPlayer()
 player.mainloop()
 ```
 ![](readme/白复生in.png)
+
+# 此分支
+ - 添加了对RPE自制谱的部分支持，自制谱将被尝试转译为官谱后运行。
+ - 因此，PhiChart并不支持官谱中所不支持的功能（键透明度、非线性事件、故事版等等），但转译功能将仅作为过渡，后续会逐渐支持各种自制谱功能。
+### 转译器
+转译工作将自动完成，你也可以使用以下代码单独调用转译器：
+```python
+from RPEanalyzer import analyzeJson
+
+chart = analyzeJson("xxx/xxx.json（自制谱路径）")
+f = open("xxx/output.json（导出路径）", "w", encoding="utf-8")
+f.write(chart.toJson())
+f.close()
+```
 

@@ -95,5 +95,6 @@ def analyzeJson(jsonFile: str):
     return chart
 
 if __name__ == "__main__":
-    chart = analyzeJson("Chart analyze/Chart_AT #4757.json")
-    chart.report()
+    chart = analyzeJson(r"D:\Projects\PygamePhiChart\charts\2085 AT\Chart_AT #1554.json")
+    with open("charts/2085 AT debug/output.json", "w", encoding="utf-8") as f:
+        json.dump(chart.toRPEJson(), f,)

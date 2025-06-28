@@ -1,4 +1,6 @@
+import json
 import os
+import zipfile
 import pygame
 import random
 import time
@@ -8,6 +10,78 @@ import analyzer
 import chart
 import autoMatch
 import traceback
+import subprocess
+
+
+def open_explorer_and_select_file(file_path):
+    """
+    打开文件资源管理器并选中指定文件（支持相对路径）
+
+    参数:
+        file_path (str): 要选中的文件路径（相对或绝对路径）
+
+    返回:
+        bool: 操作是否成功
+    """
+    try:
+        # 将路径转换为绝对路径
+        abs_path = os.path.abspath(file_path)
+
+        # 检查文件是否存在
+        if not os.path.exists(abs_path):
+            raise FileNotFoundError(f"文件不存在: {abs_path}")
+
+        # 规范化路径（统一分隔符）
+        normalized_path = os.path.normpath(abs_path)
+
+        # 使用subprocess运行命令（更安全）
+        subprocess.Popen(f'explorer /select,"{normalized_path}"', shell=True)
+        return True
+
+    except Exception as e:
+        print(f"操作失败: {e}")
+        return False
+
+
+def clear_directory(directory, clear=True):
+    """
+    清空指定目录下的所有文件（不包含子目录）
+    如果目录不存在则自动创建
+
+    参数:
+        directory (str): 要清空的目录路径
+    """
+    try:
+        # 如果目录不存在则创建
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"目录不存在，已创建: {directory}")
+            return
+
+        if not clear:
+            return
+
+        # 遍历目录下的所有内容
+        for filename in os.listdir(directory):
+            file_path = os.path.join(directory, filename)
+
+            try:
+                # 如果是文件则删除
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                # 如果是符号链接则删除
+                elif os.path.islink(file_path):
+                    os.unlink(file_path)
+                # 忽略子目录
+                elif os.path.isdir(file_path):
+                    continue
+            except Exception as e:
+                print(f"删除 {file_path} 失败: {e}")
+
+        print(f"目录 {directory} 下的文件已清空")
+
+    except Exception as e:
+        print(f"操作失败: {e}")
 
 
 timerClock = time.time()
@@ -21,12 +95,6 @@ def mytimer(msg: str):
     timerClock = current
     # print(msg, cost*1000, "ms")
     return cost
-
-
-# tempFunction = time.time
-# def mytime() -> float:
-#     return tempFunction()*0.75
-# time.time = mytime
 
 
 # 添加高斯模糊
@@ -320,7 +388,7 @@ class HitEffect:
         self.rList = []
 
         for i in range(random.randint(3, 6)):
-            angle = random.uniform(1, 2 * math.pi)
+            angle = random.uniform(0, 2 * math.pi)
             radio = random.uniform(0.8, 1)
             self.xList.append(math.sin(angle))
             self.yList.append(math.cos(angle))
@@ -345,8 +413,8 @@ class Player:
         self.BLACK = (0, 0, 0, 255)
         self.WHITE = (255, 255, 255, 255)
         # 判定线长度/粗细
-        self.lineLength = 10000
-        self.lineWidth = 5
+        self.lineLength = 3.6 * self.height
+        self.lineWidth = 0.006 * self.height
         # 键大小
         self.noteSize = int(self.width / 8)
         self.hitEffectSize = int(self.width / 6)
@@ -414,6 +482,14 @@ class Player:
         self.cmrX: float = self.width / 2
         self.cmrY: float = self.height / 2
 
+
+        # 3D转谱
+        self.enableCompiler = False
+        self.tempLineList: list[chart.Line] = []
+        self.tempLineListBG: list[chart.Line] = []
+        self.allTempLines: list[chart.Line] = []
+        self.allTempLinesBG: list[chart.Line] = []
+
         ### 固有对象
 
         # 初始化铺面文件
@@ -472,6 +548,60 @@ class Player:
 
         return xn, yn
 
+    def getTempLine(self):
+        if len(self.tempLineList) > 0:
+            line = self.tempLineList[-1]
+            self.tempLineList.pop(-1)
+            return line
+        else:
+            line = chart.Line(self.chart.bpm)
+            line.rotate.addPeriod(0, self.timeT, 0, 0)
+            line.alpha.addPeriod(0, self.timeT, 0, 0)
+            line.move1.addPeriod(0, self.timeT, 0, 0)
+            line.move2.addPeriod(0, self.timeT, 0, 0)
+            line.scaleX.addPeriod(0, self.timeT, 1.0, 1.0)
+            line.scaleY.addPeriod(0, self.timeT, 1.0, 1.0)
+            line.color.addPeriod(0, self.timeT, [255,255,255], [255,255,255])
+            line.speed.addPeriod(0, 9999999, 1, 1)
+            self.allTempLines.append(line)
+            return line
+
+    def getTempLineBG(self):
+        if len(self.tempLineListBG) > 0:
+            line = self.tempLineListBG[-1]
+            self.tempLineListBG.pop(-1)
+            return line
+        else:
+            line = chart.Line(self.chart.bpm)
+            line.rotate.addPeriod(0, self.timeT, 0, 0)
+            line.alpha.addPeriod(0, self.timeT, 0, 0)
+            line.move1.addPeriod(0, self.timeT, 0, 0)
+            line.move2.addPeriod(0, self.timeT, 0, 0)
+            line.scaleX.addPeriod(0, self.timeT, 1.0, 1.0)
+            line.scaleY.addPeriod(0, self.timeT, 1.0, 1.0)
+            line.color.addPeriod(0, self.timeT, [255,255,255], [255,255,255])
+            line.speed.addPeriod(0, 9999999, 1, 1)
+            self.allTempLinesBG.append(line)
+            return line
+
+    def freeTempLine(self, line: chart.Line, note, isOutLine=False):
+        self.tempLineList.append(line)
+        if note.type_ == 1 or note.type_ == 3:
+            colorFill = [10, 195, 255]
+        elif note.type_ == 2:
+            colorFill = [240, 237, 105]
+        else:
+            colorFill = [245, 67, 101]
+        line.color.addPeriod(line.color.latestTimeT(), self.timeT, colorFill, colorFill)
+
+    def freeTempLineBG(self, line: chart.Line, note, isOutLine=False):
+        self.tempLineListBG.append(line)
+        if note.doubleHit:
+            colorFill = [254, 254, 102]
+        else:
+            colorFill = [255, 255, 255]
+        line.color.addPeriod(line.color.latestTimeT(), self.timeT, colorFill, colorFill)
+
     def render(self):
 
         self.lineCount = 0
@@ -480,19 +610,7 @@ class Player:
 
         mytimer("初始化")
 
-        # 绘制进度条
-        pygame.draw.rect(
-            self.foreground_layer,
-            (255, 255, 255, 100),
-            (0, 0, self.width * (self.timeS / self.waveDurationS), 8),
-            width=0,
-        )
-        pygame.draw.rect(
-            self.foreground_layer,
-            (255, 255, 255, 200),
-            (self.width * (self.timeS / self.waveDurationS), 0, 5, 8),
-            width=0,
-        )
+        # print(len(self.tempLineList), len(self.allTempLines))
 
         # 击中特效的方块飞舞
         for effect in self.hitEffectList:
@@ -523,10 +641,20 @@ class Player:
             line.tempS = Vsin
             line.tempC = Vcos
 
-            x1 = int(x - Vcos * self.lineLength / 2)
-            y1 = int(y - Vsin * self.lineLength / 2)
-            x2 = int(x + Vcos * self.lineLength / 2)
-            y2 = int(y + Vsin * self.lineLength / 2)
+            if self.chart.RPE_Chart:
+                scaleX = line.scaleX(self.timeT)
+                scaleY = line.scaleY(self.timeT)
+                color = (line.color(self.timeT)).copy()
+                color.append(min(int(255 * a), 255))
+            else:
+                scaleY = 1.0
+                scaleX = 1.0
+                color = (254, 255, 169, min(int(255 * a), 255))
+
+            x1 = int(x - Vcos * self.lineLength / 2 * scaleX)
+            y1 = int(y - Vsin * self.lineLength / 2 * scaleX)
+            x2 = int(x + Vcos * self.lineLength / 2 * scaleX)
+            y2 = int(y + Vsin * self.lineLength / 2 * scaleX)
 
             y1 = self.height - y1
             y2 = self.height - y2
@@ -546,12 +674,11 @@ class Player:
 
             if not skip and a > 0.01:
                 self.lineCount += 1
-                color = (254, 255, 169, min(int(255 * a), 255))
                 pygame.draw.line(
                     self.foreground_layer, color,
                     start_pos=(x1, y1),
                     end_pos=(x2, y2),
-                    width=self.lineWidth
+                    width=round(self.lineWidth * scaleY),
                 )
 
             if self.enable3D:
@@ -641,6 +768,9 @@ class Player:
                     note.begin = True
                     self.tapSound.play()
 
+                if note.alpha == 0:
+                    continue
+
                 if self.enable3D and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
                     continue
 
@@ -707,6 +837,11 @@ class Player:
                     yt = y + dx * Vsin
                     if not (-self.noteSize*0.5 < xt < self.width+self.noteSize*0.5
                             and -self.noteSize*0.5 < yt < self.height+self.noteSize*0.5):
+                        if self.enableCompiler and note.tempLine1 is not None:
+                            self.freeTempLine(note.tempLine1, note)
+                            self.freeTempLineBG(note.tempLine2, note, True)
+                            note.tempLine1 = None
+                            note.tempLine2 = None
                         continue
 
                     # 3D修正
@@ -743,6 +878,16 @@ class Player:
                     elif note.type_ == 4:
                         self.flickSound.play()
 
+                if self.timeT > note.time_ and self.enableCompiler:
+                    self.freeTempLine(note.tempLine1, note)
+                    self.freeTempLineBG(note.tempLine2, note, True)
+                    note.tempLine1 = None
+                    note.tempLine2 = None
+                    continue
+
+                if note.alpha == 0:
+                    continue
+
                 if self.enable3D and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
                     continue
 
@@ -750,9 +895,8 @@ class Player:
                     xn = self.mappingX(xn)
                     yn = self.mappingY(yn)
 
-                if xn < -self.noteSize or xn > self.width + self.noteSize:
-                    continue
-                elif yn < -self.noteSize or yn > self.height + self.noteSize:
+                if (xn < -self.noteSize or xn > self.width + self.noteSize)\
+                        or (yn < -self.noteSize or yn > self.height + self.noteSize):
                     continue
 
                 if note.doubleHit and self.doubleHitEffect:
@@ -782,6 +926,47 @@ class Player:
                         print(f"渲染错误: {e}, note: {note}, timeT: {self.timeT}, xn: {xn}, yn: {yn}")
                         continue
 
+                if self.enableCompiler:
+
+                    if note.tempLine1 is None:
+                        tmpL1 = self.getTempLine()
+                        tmpL2 = self.getTempLineBG()
+                        note.tempLine1 = tmpL1
+                        note.tempLine2 = tmpL2
+
+                        tmpL1.alpha.addPeriod(tmpL1.alpha.latestTimeT(), self.timeT, 0, 0)
+                        tmpL1.move1.addPeriod(tmpL1.move1.latestTimeT(), self.timeT, -100, xn/self.width)
+                        tmpL1.move2.addPeriod(tmpL1.move2.latestTimeT(), self.timeT, -100, yn/self.height)
+                        tmpL1.scaleX.addPeriod(tmpL1.scaleX.latestTimeT(), self.timeT, 1.0, self.noteSize/1.06*sr/self.lineLength)
+                        tmpL1.scaleY.addPeriod(tmpL1.scaleY.latestTimeT(), self.timeT, 1.0, self.noteSize/10*sr/self.lineWidth)
+                        tmpL1.rotate.addPeriod(tmpL1.rotate.latestTimeT(), self.timeT, 0, r)
+
+                        tmpL2.alpha.addPeriod(tmpL2.alpha.latestTimeT(), self.timeT, 0, 0)
+                        tmpL2.move1.addPeriod(tmpL2.move1.latestTimeT(), self.timeT, -100, xn/self.width)
+                        tmpL2.move2.addPeriod(tmpL2.move2.latestTimeT(), self.timeT, -100, yn/self.height)
+                        tmpL2.scaleX.addPeriod(tmpL2.scaleX.latestTimeT(), self.timeT, 1.0, self.noteSize*sr/self.lineLength)
+                        tmpL2.scaleY.addPeriod(tmpL2.scaleY.latestTimeT(), self.timeT, 1.0, self.noteSize/10*sr/self.lineWidth)
+                        tmpL2.rotate.addPeriod(tmpL2.rotate.latestTimeT(), self.timeT, 0, r)
+
+                    else:
+
+                        tmpL1 = note.tempLine1
+                        tmpL1.alpha.addPeriod(tmpL1.alpha.latestTimeT(), self.timeT, 1.0, 1.0)
+                        tmpL1.move1.addPeriod(tmpL1.move1.latestTimeT(), self.timeT, tmpL1.move1.latestValue(), xn/self.width)
+                        tmpL1.move2.addPeriod(tmpL1.move2.latestTimeT(), self.timeT, tmpL1.move2.latestValue(), yn/self.height)
+                        tmpL1.scaleX.addPeriod(tmpL1.scaleX.latestTimeT(), self.timeT, tmpL1.scaleX.latestValue(), self.noteSize/1.06*sr/self.lineLength)
+                        tmpL1.scaleY.addPeriod(tmpL1.scaleY.latestTimeT(), self.timeT, tmpL1.scaleY.latestValue(), self.noteSize/10*sr/self.lineWidth)
+                        tmpL1.rotate.addPeriod(tmpL1.rotate.latestTimeT(), self.timeT, tmpL1.rotate.latestValue(), r)
+
+                        tmpL2 = note.tempLine2
+                        tmpL2.alpha.addPeriod(tmpL2.alpha.latestTimeT(), self.timeT, 1.0, 1.0)
+                        tmpL2.move1.addPeriod(tmpL2.move1.latestTimeT(), self.timeT, tmpL2.move1.latestValue(), xn/self.width)
+                        tmpL2.move2.addPeriod(tmpL2.move2.latestTimeT(), self.timeT, tmpL2.move2.latestValue(), yn/self.height)
+                        tmpL2.scaleX.addPeriod(tmpL2.scaleX.latestTimeT(), self.timeT, tmpL2.scaleX.latestValue(), self.noteSize*sr/self.lineLength)
+                        tmpL2.scaleY.addPeriod(tmpL2.scaleY.latestTimeT(), self.timeT, tmpL2.scaleY.latestValue(), self.noteSize/10*sr/self.lineWidth)
+                        tmpL2.rotate.addPeriod(tmpL2.rotate.latestTimeT(), self.timeT, tmpL2.rotate.latestValue(), r)
+
+
                 x0 = int(xn - surface.get_width() / 2)
                 y0 = int(yn + surface.get_height() / 2)
                 y0 = self.height - y0
@@ -799,6 +984,22 @@ class Player:
                 self.noteCount += 1
 
         self.noteCost = mytimer("note")
+
+
+        # 绘制进度条
+        pygame.draw.rect(
+            self.foreground_layer,
+            (255, 255, 255, 100),
+            (0, 0, self.width * (self.timeS / self.waveDurationS), 8),
+            width=0,
+        )
+        pygame.draw.rect(
+            self.foreground_layer,
+            (255, 255, 255, 200),
+            (self.width * (self.timeS / self.waveDurationS), 0, 5, 8),
+            width=0,
+        )
+
 
         for effect in self.hitEffectList:
             if self.enableMapping:
@@ -1028,6 +1229,29 @@ class Player:
             ((t6, ty6), (t7, ty7), (a7, ay7), (a6, ay6),)
         )
 
+    def titleMsg(self, msg: str, subtitle: str = None):
+        self.screen.blit(self.background_layer, (0, 0))
+
+        draw_text(
+            self.screen, msg,
+            self.font48, self.WHITE,
+            pos=(int(self.width / 2), int(self.height / 2 - 40)),
+            align="C",
+        )
+
+        if subtitle is not None:
+            draw_text(
+                self.screen,
+                subtitle,
+                self.font18, self.WHITE,
+                pos=(int(self.width / 2), int(self.height / 2 + 30)),
+                align="C",
+            )
+
+        # 更新窗口
+        pygame.display.flip()
+        pygame.display.update()
+
     def is_rect_off_screen(self, x1, y1, x2, y2):
         left = min(x1, x2)
         right = max(x1, x2)
@@ -1092,6 +1316,31 @@ class Player:
             pos=(self.width - 30, self.height - 30),
             align="SE",
         )
+
+        if self.enableCompiler:
+            draw_text(
+                self.foreground_layer,
+                f"转谱中"+"."*int(self.timeS%3),
+                self.font48, self.WHITE,
+                pos=(int(self.width/2), int(self.height/2-40)),
+                align="C",
+            )
+
+            draw_text(
+                self.foreground_layer,
+                f"请静置等待完成",
+                self.font18, self.WHITE,
+                pos=(int(self.width/2), int(self.height/2+10)),
+                align="C",
+            )
+
+            draw_text(
+                self.foreground_layer,
+                f"判定线总数：{len(self.allTempLinesBG)+len(self.allTempLines)+len(self.chart.lineList)}",
+                self.font18, self.WHITE,
+                pos=(int(self.width/2), int(self.height/2+60)),
+                align="C",
+            )
 
         if not self.displayDebug:
             return
@@ -1313,10 +1562,6 @@ class Player:
             self.font18 = pygame.font.SysFont(None, 24)
             self.font48 = pygame.font.SysFont(None, 64)
 
-        # 加载铺面数据
-        self.chart = analyzer.analyzeJson(self.chartFile)
-        self.BPM = self.chart.lineList[0].bpm
-
         # 预渲染缓存器
         if self.enableMapping:
             self.images = PreRendCache(self.noteSize * self.mw / self.width, self.hitEffectSize)
@@ -1327,7 +1572,26 @@ class Player:
         pygame.mixer.music.load(self.audioFile)
         self.waveDurationS = pygame.mixer.Sound(self.audioFile).get_length()
 
+        # 显示消息
+        self.titleMsg("读取谱面中", "少女祈祷中...")
+
+        # 加载铺面数据
+        self.chart = analyzer.analyzeJson(self.chartFile)
+        self.BPM = self.chart.lineList[0].bpm
+
+        # 转谱处理Hold
+        if self.enableCompiler:
+            self.subtitle = "COMPILER"
+
+            for line in self.chart.lineList:
+                for note in line.noteList:
+                    if note.type_ == 3:
+                        note.holdTime = 0
+                        note.type_ = 1
+                        note.speed = 1.0
+
     def mainloop(self):
+
         global running
         running = True
         clock = pygame.time.Clock()
@@ -1358,8 +1622,7 @@ class Player:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                    pygame.quit()
-                    return
+                    # return
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.pause = not self.pause
@@ -1367,6 +1630,10 @@ class Player:
             if self.pause:
                 clock.tick(self.FPS)
                 continue
+
+            if self.timeS > self.waveDurationS:
+                running = False
+                break
 
             # 清空屏幕（用白色填充）
             # 绘制当前帧的所有内容
@@ -1385,18 +1652,91 @@ class Player:
             self.screen.blit(self.foreground_layer, (0, 0))
             pygame.display.flip()
 
-            # 控制帧率
-            self.timeCost = time.time() - timer + 0.00001
-            clock.tick(self.FPS)
+            if self.enableCompiler:
+                self.timeS += 1 / self.FPS
+                self.timeT = self.timeS * self.BPM / 1.875
+            else:
+                # 控制帧率
+                self.timeCost = time.time() - timer + 0.00001
+                clock.tick(self.FPS)
+                # 统计帧数
+                frameCount += 1
+                self.frameIndex += 1
+                if timer // 1 != time.time() // 1:
+                    self.secondCount = frameCount
+                    frameCount = 0
 
-            frameCount += 1
-            self.frameIndex += 1
-            if timer // 1 != time.time() // 1:
-                self.secondCount = frameCount
-                frameCount = 0
+                current = time.time()
+                delta = current - timer
+                timer = current
+                self.timeS += delta
+                self.timeT = self.timeS * self.BPM / 1.875
 
-            current = time.time()
-            delta = current - timer
-            timer = current
-            self.timeS += delta
-            self.timeT = self.timeS * self.BPM / 1.875
+        # 导出谱面
+        if self.enableCompiler:
+            print("output here")
+            self.outputChart()
+
+        # 退出窗口
+        pygame.quit()
+
+    def outputChart(self):
+
+        self.titleMsg("编码中", "请勿关闭窗口")
+
+        for line in self.chart.lineList:
+            for note in line.noteList:
+                note.alpha = 0
+
+        for tmpL in self.allTempLinesBG + self.allTempLines:
+            tmpL.alpha.addPeriod(tmpL.alpha.latestTimeT(), 99999999, 0, 0)
+            tmpL.move1.addPeriod(tmpL.move1.latestTimeT(), 99999999, -1, -1)
+            tmpL.move2.addPeriod(tmpL.move2.latestTimeT(), 99999999, -1, -1)
+            tmpL.scaleX.addPeriod(tmpL.scaleX.latestTimeT(), 99999999, 1.0, 1.0)
+            tmpL.scaleY.addPeriod(tmpL.scaleY.latestTimeT(), 99999999, 1.0, 1.0)
+            tmpL.rotate.addPeriod(tmpL.rotate.latestTimeT(), 99999999, 0, 0)
+            tmpL.color.addPeriod(tmpL.color.latestTimeT(), 99999999, [255, 255, 255], [255, 255, 255])
+            self.chart.addLine(tmpL)
+
+        # RPE META 数据
+        self.chart.RPE_level = 160
+        self.chart.name = self.name
+        self.chart.level = self.level
+        self.chart.song = os.path.basename(self.audioFile)
+        self.chart.bg = os.path.basename(self.illuFile)
+        self.chart.duration = self.waveDurationS
+        self.chart.chartTime = self.waveDurationS
+
+        info = f"""#
+Name: {self.chart.name}
+Path: {self.chart.id}
+Song: {self.chart.song}
+Picture: {self.chart.bg}
+Chart: 3dChart.json
+Level: {self.chart.level}
+Composer: {self.chart.composer}
+Charter: {self.chart.charter}
+Illustrator: {self.chart.illustration}"""
+
+        clear_directory("temp")
+        clear_directory("output", clear=False)
+
+        with open("temp/3dChart.json", "w", encoding="utf-8") as outfile:
+            outfile.write(json.dumps(self.chart.toRPEJson(), ensure_ascii=False))
+            print("成功导出")
+
+        with open("temp/info.txt", "w", encoding="utf-8") as outfile:
+            outfile.write(info)
+            print("成功导出")
+
+        self.titleMsg("打包中", "请勿关闭窗口")
+
+        # 创建一个新的 ZIP 文件并添加文件
+        with zipfile.ZipFile("output/"+self.name+'.zip', 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write("temp/3dChart.json", "3dChart.json")
+            zipf.write("temp/info.txt", "info.txt")
+            zipf.write(self.audioFile, self.chart.song)
+            zipf.write(self.illuFile, self.chart.bg)
+
+            # 使用explorer的/select参数
+            open_explorer_and_select_file("output/"+self.name+'.zip')

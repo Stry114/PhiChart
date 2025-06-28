@@ -1,17 +1,15 @@
 from player import Player
 from autoMatch import Matcher
 
-player = Player(Matcher("C:/Users/Stry/Desktop/rr"), w=1000, h=800, fps=120)
-# player = Player(Matcher("charts/白复生 AT"), w=1000, h=800, fps=120)
+player = Player(Matcher("charts/2085 AT"), w=1000, h=800, fps=120)
 
 # 设置副标题
 player.name = "PRAGMATISM -RESURRECTION-"
 player.level = "高视角 AT Lv.16"
 
 # 启用3D
-player.enable3D = False
-# player.enableMapping = True
-# player.targetRectOfMapping = (100, 100, 1100, 800)
+player.enable3D = True
+player.enableCompiler = False
 
 # 设置摄像机位置，推荐处于中间偏上的位置
 player.cmrY = player.height*0.5

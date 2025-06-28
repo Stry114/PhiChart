@@ -1,5 +1,5 @@
 from tkinter import *
-from tkinter import ttk
+from tkinter import ttk, font
 from tkinter import messagebox
 from tkinter import filedialog
 import threading
@@ -16,8 +16,8 @@ from autoMatch import Matcher
 from assets.lang import ZH_CN as lang
 
 top = Tk()
-top.title("PhiChart Launcher v0.2 by Stry")
-top.minsize(width=400, height=500)
+top.title("PhiChart Launcher v0.3 by Stry")
+top.minsize(width=1000, height=700)
 top.config(padx=20, pady=20)
 
 def setEntry(entry: ttk.Entry, string: str):
@@ -107,7 +107,26 @@ def runningThread():
             if lb5et5.get() != "":
                 player.b = float(lb5et5.get())
 
+        if lb7int1.get() == 1:
+            player.enableCompiler = True
+
+        # 先读取铺面并初始化
         player.initPlayer()
+
+        if lb7int1.get() == 1:
+            player.enableCompiler = True
+            if lb7et2.get() != "":
+                player.chart.RPE_level = int(lb7et2.get())
+            if lb7et3.get() != "":
+                player.chart.charter = lb7et3.get()
+            if lb7et4.get() != "":
+                player.chart.composer = lb7et4.get()
+            if lb7et5.get() != "":
+                player.chart.illustration = lb7et5.get()
+            if lb7et6.get() != "":
+                player.chart.id = lb7et6.get()
+
+        # 进入消息循环
         player.mainloop()
 
     except AssertionError as e:
@@ -134,14 +153,15 @@ def defaultArgs(*args):
     setEntry(lb1et4, "PHICHART")
     setEntry(lb1et5, "Unknown")
     setEntry(lb1et6, "UN Lv.?")
-    setEntry(lb2et1, "800")
-    setEntry(lb2et2, "600")
+    setEntry(lb2et1, "1200")
+    setEntry(lb2et2, "800")
     setEntry(lb2et3, "")
     setEntry(lb2et4, "")
     setEntry(lb3et1, "60")
     setEntry(lb3et2, "")
     setEntry(lb3et3, "")
     setEntry(lb3et4, "")
+    setEntry(lb7et2, "160")
     lb3int1.set(0)
     lb3int2.set(0)
     lb4int1.set(0)
@@ -181,7 +201,7 @@ def loadTips():
     ToolTip(lb5et3, lang.str11)
     ToolTip(lb5et4, lang.str12)
     ToolTip(lb5et5, lang.str27)
-    ToolTip(lb5ck2, lang.str26)
+    # ToolTip(lb5ck2, lang.str26)
     ToolTip(lb2et1, lang.str1)
     ToolTip(lb2et2, lang.str1)
     ToolTip(lb2et3, lang.str3)
@@ -202,7 +222,30 @@ def loadTips():
     ToolTip(lb1et1, lang.str23)
     ToolTip(lb1et2, lang.str24)
     ToolTip(lb1et3, lang.str25)
+    ToolTip(lb7ck1, lang.str32)
+    ToolTip(lb7et2, lang.str33)
+    ToolTip(lb7et6, lang.str34)
 
+def enableCompiler(*args):
+
+    if lb7int1.get() != 1:
+        return
+    lb5int1.set(1)
+
+    root = Toplevel(top)
+    root.title("声明")
+    root.geometry("400x360")
+    root.config(padx=40, pady=40)
+    root.attributes("-topmost", True)
+    root.attributes("-toolwindow", True)
+
+    ft1 = font.Font(size=24, weight="bold")
+    Label(root, font=ft1, text="立体转谱器声明").pack(side=TOP, anchor=W, fill=X)
+    Label(root, font=ft1, text="").pack(side=TOP, anchor=W, fill=X)
+    Label(root, wraplength=320, justify="left", text=lang.str28).pack(side=TOP, anchor=W)
+    Label(root, wraplength=320, justify="left", text=lang.str29).pack(side=TOP, anchor=W)
+    Label(root, wraplength=320, justify="left", text=lang.str30).pack(side=TOP, anchor=W)
+    Label(root, wraplength=320, justify="left", text=lang.str31).pack(side=TOP, anchor=W)
 
 def ZH_CN():
     global lang
@@ -224,12 +267,14 @@ lb1 = LabelFrame(fr1, text="谱面信息", padx=5, pady=5)
 lb1.pack(side=TOP, fill=BOTH, padx=5, pady=5, expand=True)
 lb2 = LabelFrame(fr1, text="画面设置", padx=5, pady=5)
 lb2.pack(side=TOP, fill=BOTH, padx=5, pady=5, expand=True)
-lb3 = LabelFrame(fr2, text="高级设置", padx=5, pady=5)
+lb3 = LabelFrame(fr1, text="高级设置", padx=5, pady=5)
 lb3.pack(side=TOP, fill=BOTH, padx=5, pady=5, expand=True)
-lb4 = LabelFrame(fr2, text="谱面揭秘（映射）", padx=5, pady=5)
+lb4 = LabelFrame(fr3, text="谱面揭秘（映射）", padx=5, pady=5)
 lb4.pack(side=TOP, fill=BOTH, padx=5, pady=5, expand=True)
-lb5 = LabelFrame(fr3, text="立体谱面", padx=5, pady=5)
+lb5 = LabelFrame(fr2, text="立体谱面", padx=5, pady=5)
 lb5.pack(side=TOP, fill=BOTH, padx=5, pady=5, expand=True)
+lb7 = LabelFrame(fr2, text="立体转谱与RPE选项", padx=5, pady=5)
+lb7.pack(side=TOP, fill=BOTH, padx=5, pady=5, expand=True)
 lb6 = Frame(fr3)
 lb6.pack(side=TOP, fill=X, padx=5, pady=5)
 
@@ -309,8 +354,8 @@ lb5int1 = IntVar()
 lb5int2 = IntVar()
 lb5ck1 = ttk.Checkbutton(lb5, variable=lb5int1, text="启用立体谱面")
 lb5ck1.grid(row=0, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
-lb5ck2 = ttk.Checkbutton(lb5, variable=lb5int2, text="仅对部分判定线生效")
-lb5ck2.grid(row=6, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
+# lb5ck2 = ttk.Checkbutton(lb5, variable=lb5int2, text="仅对部分判定线生效")
+# lb5ck2.grid(row=6, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
 Label(lb5, text="流速（下落倍速）").grid(row=1, column=0)
 Label(lb5, text="Note出现的位置").grid(row=2, column=0)
 Label(lb5, text="摄像机水平位置").grid(row=3, column=0)
@@ -326,8 +371,8 @@ lb5et4 = ttk.Entry(lb5)
 lb5et4.grid(row=4, column=1, sticky=EW, padx=5, pady=5)
 lb5et5 = ttk.Entry(lb5)
 lb5et5.grid(row=5, column=1, sticky=EW, padx=5, pady=5)
-lb5bt1 = ttk.Button(lb5ck2, text="选取", command=selectLines)
-lb5bt1.pack(side=RIGHT, fill=Y)
+# lb5bt1 = ttk.Button(lb5ck2, text="选取", command=selectLines)
+# lb5bt1.pack(side=RIGHT, fill=Y)
 
 lb6.columnconfigure(index=0, weight=1)
 lb6.columnconfigure(index=1, weight=1)
@@ -338,6 +383,27 @@ lb6bt2.grid(row=0, column=1, sticky=EW, padx=5, pady=5, ipady=5)
 lb6bt3 = ttk.Button(lb6, text="开始", command=launch)
 lb6bt3.grid(row=1, column=0, sticky=EW, padx=5, pady=5, ipady=10, columnspan=2)
 
+lb7.columnconfigure(index=1, weight=1)
+lb7int1 = IntVar()
+lb7int2 = (IntVar())
+lb7int2.set(1)
+lb7ck1 = ttk.Checkbutton(lb7, variable=lb7int1, text="启用转谱", command=enableCompiler)
+lb7ck1.grid(row=0, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
+Label(lb7, text="RPE版本").grid(row=3, column=0)
+lb7et2 = ttk.Entry(lb7)
+lb7et2.grid(row=3, column=1, sticky=EW, padx=5, pady=5)
+Label(lb7, text="谱师").grid(row=4, column=0)
+lb7et3 = ttk.Entry(lb7)
+lb7et3.grid(row=4, column=1, sticky=EW, padx=5, pady=5)
+Label(lb7, text="曲师").grid(row=5, column=0)
+lb7et4 = ttk.Entry(lb7)
+lb7et4.grid(row=5, column=1, sticky=EW, padx=5, pady=5)
+Label(lb7, text="画师").grid(row=6, column=0)
+lb7et5 = ttk.Entry(lb7)
+lb7et5.grid(row=6, column=1, sticky=EW, padx=5, pady=5)
+Label(lb7, text="ID").grid(row=7, column=0)
+lb7et6 = ttk.Entry(lb7)
+lb7et6.grid(row=7, column=1, sticky=EW, padx=5, pady=5)
 
 setEntry(lb4et1, "DISABLED")
 setEntry(lb4et2, "DISABLED")
