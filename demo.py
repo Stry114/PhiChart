@@ -1,18 +1,20 @@
 from player import Player
 from autoMatch import Matcher
 
-player = Player(Matcher("charts/2085 AT"), w=1000, h=800, fps=120)
+player = Player(Matcher("temp"), w=1200, h=800, fps=120)
 
 # 设置副标题
-player.name = "PRAGMATISM -RESURRECTION-"
-player.level = "高视角 AT Lv.16"
+player.name = "Horizon Blue"
+player.level = "IN Lv.?"
+player.subtitle = "PYGAME PHICHART"
 
 # 启用3D
 player.enable3D = True
+player.enableNewVision = False
 player.enableCompiler = False
 
 # 设置摄像机位置，推荐处于中间偏上的位置
-player.cmrY = player.height*0.5
+player.cmrY = player.height*0.2
 player.cmrX = player.width*0.5
 
 # 设置键出现的位置，推荐值为3倍屏幕高度
@@ -25,5 +27,6 @@ player.noteSize = player.width / 8
 player.hitEffectSize = player.width / 6
 
 # 初始化并进入消息循环
+player.startTimeS = 0
 player.initPlayer()
 player.mainloop()

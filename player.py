@@ -529,9 +529,14 @@ class Player:
         self.dragSound: pygame.mixer.Sound = ...
         self.flickSound: pygame.mixer.Sound = ...
 
+        # 启用船新视角
+        self.enableNewVision = True
+        # 下放线条选项
+        self.displacementY = 0.6
+
     def getNoteHitPos(self, line: chart.Line, note: chart.Note):
         x = line.move1(note.time_) * self.width
-        y = line.move2(note.time_) * self.height
+        y = line.move2(note.time_) * self.height * self.displacementY
         r = line.rotate(note.time_)
         Vsin = math.sin(math.radians(r))
         Vcos = math.cos(math.radians(r))
@@ -629,7 +634,7 @@ class Player:
 
         for line in self.chart.lineList:
             x = line.move1(self.timeT) * self.width
-            y = line.move2(self.timeT) * self.height
+            y = line.move2(self.timeT) * self.height * self.displacementY
             a = line.alpha(self.timeT)
             r = line.rotate(self.timeT)
             Vsin = math.sin(math.radians(r))
@@ -689,12 +694,15 @@ class Player:
 
         for line in self.chart.lineList:
             x = line.move1(self.timeT) * self.width
-            y = line.move2(self.timeT) * self.height
+            y = line.move2(self.timeT) * self.height * self.displacementY
             r = line.rotate(self.timeT)
             self.h = line.cmrH
 
             Vsin = math.sin(math.radians(r))
             Vcos = math.cos(math.radians(r))
+
+            # 统计线上此帧的note数字
+            line.noteFrameCount = 0
 
             for note in line.noteList:
                 if note.type_ != 3:
@@ -719,7 +727,7 @@ class Player:
                     xt = x + dx * Vcos
                     yt = y + dx * Vsin
                     if not (-self.noteSize*0.5 < xt < self.width+self.noteSize*0.5
-                            and -self.noteSize*0.5 < yt < self.height+self.noteSize*0.5):
+                            and -self.noteSize*0.5 < yt/self.displacementY < self.height+self.noteSize*0.5):
                         continue
 
                     # 3D修正
@@ -808,13 +816,14 @@ class Player:
                     self.holdRender3D(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
                 else:
                     self.holdRender(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
+                line.noteFrameCount += 1
                 # pygame.draw.polygon(self.foreground_layer, self.BLACK, ((x1, y1), (x2, y2), (x3, y3), (x4, y4)))
 
         self.holdCost = mytimer("hold")
 
         for line in self.chart.lineList:
             x = line.move1(self.timeT) * self.width
-            y = line.move2(self.timeT) * self.height
+            y = line.move2(self.timeT) * self.height * self.displacementY
             r = line.rotate(self.timeT)
             self.h = line.cmrH
 
@@ -836,7 +845,7 @@ class Player:
                     xt = x + dx * Vcos
                     yt = y + dx * Vsin
                     if not (-self.noteSize*0.5 < xt < self.width+self.noteSize*0.5
-                            and -self.noteSize*0.5 < yt < self.height+self.noteSize*0.5):
+                            and -self.noteSize*0.5 < yt/self.displacementY < self.height+self.noteSize*0.5):
                         if self.enableCompiler and note.tempLine1 is not None:
                             self.freeTempLine(note.tempLine1, note)
                             self.freeTempLineBG(note.tempLine2, note, True)
@@ -878,11 +887,11 @@ class Player:
                     elif note.type_ == 4:
                         self.flickSound.play()
 
-                if self.timeT > note.time_ and self.enableCompiler:
-                    self.freeTempLine(note.tempLine1, note)
-                    self.freeTempLineBG(note.tempLine2, note, True)
-                    note.tempLine1 = None
-                    note.tempLine2 = None
+                    if note.tempLine1 is not None:
+                        self.freeTempLine(note.tempLine1, note)
+                        self.freeTempLineBG(note.tempLine2, note, True)
+                        note.tempLine1 = None
+                        note.tempLine2 = None
                     continue
 
                 if note.alpha == 0:
@@ -922,6 +931,7 @@ class Player:
                             surface,
                             (surface.get_width() * sr, surface.get_height() * sr),
                         )
+                        line.noteFrameCount += 1
                     except ValueError as e:
                         print(f"渲染错误: {e}, note: {note}, timeT: {self.timeT}, xn: {xn}, yn: {yn}")
                         continue
@@ -984,6 +994,73 @@ class Player:
                 self.noteCount += 1
 
         self.noteCost = mytimer("note")
+
+        # 再次渲染线
+        if self.enableNewVision:
+            for line in self.chart.lineList:
+
+                if line.noteFrameCount == 0:
+                    continue
+
+                x = line.move1(self.timeT) * self.width
+                y = line.move2(self.timeT) * self.height * self.displacementY
+                a = line.alpha(self.timeT)
+                r = line.rotate(self.timeT)
+                Vsin = math.sin(math.radians(r))
+                Vcos = math.cos(math.radians(r))
+
+                if a < 0.5:
+                    continue
+
+                line.tempX = x
+                line.tempY = y
+                line.tempR = r
+                line.tempS = Vsin
+                line.tempC = Vcos
+
+                if self.chart.RPE_Chart:
+                    scaleX = line.scaleX(self.timeT)
+                    scaleY = line.scaleY(self.timeT)
+                    color = (line.color(self.timeT)).copy()
+                    color.append(min(int(255 * a), 255))
+                else:
+                    scaleY = 1.0
+                    scaleX = 1.0
+                    color = (254, 255, 169, min(int(255 * a), 255))
+
+                x1 = int(x - Vcos * self.lineLength / 2 * scaleX)
+                y1 = int(y - Vsin * self.lineLength / 2 * scaleX)
+                x2 = int(x + Vcos * self.lineLength / 2 * scaleX)
+                y2 = int(y + Vsin * self.lineLength / 2 * scaleX)
+
+                y1 = self.height - y1
+                y2 = self.height - y2
+
+                if self.enableMapping:
+                    x1 = self.mappingX(x1)
+                    y1 = self.mappingY(y1)
+                    x2 = self.mappingX(x2)
+                    y2 = self.mappingY(y2)
+
+                x_min = min(x1, x2)
+                x_max = max(x1, x2)
+                y_min = min(y1, y2)
+                y_max = max(y1, y2)
+
+                skip = max(x_min, 0) > min(x_max, self.width) or max(y_min, 0) > min(y_max, self.height)
+
+                if not skip and a > 0.01:
+                    self.lineCount += 1
+                    pygame.draw.line(
+                        self.foreground_layer, color,
+                        start_pos=(x1, y1),
+                        end_pos=(x2, y2),
+                        width=round(self.lineWidth * scaleY),
+                    )
+
+            if self.enable3D:
+                line.cmrDx = -math.cos(math.radians(r)) * (self.cmrX - x) - math.sin(math.radians(r)) * (self.height - self.cmrY -y)
+                line.cmrH = -(math.sin(math.radians(r)) * (self.cmrX - x) - math.cos(math.radians(r)) * (self.height - self.cmrY -y)) / self.Y
 
 
         # 绘制进度条
@@ -1590,6 +1667,10 @@ class Player:
                         note.type_ = 1
                         note.speed = 1.0
 
+        # 处理全新视角
+        if not self.enableNewVision:
+            self.displacementY = 1.0
+
     def mainloop(self):
 
         global running
@@ -1687,6 +1768,11 @@ class Player:
         for line in self.chart.lineList:
             for note in line.noteList:
                 note.alpha = 0
+
+        for line in self.chart.lineList:
+            for i in range(len(line.move2.startTimeList)):
+                line.move2.endValueList[i] *= self.displacementY
+                line.move2.startValueList[i] *= self.displacementY
 
         for tmpL in self.allTempLinesBG + self.allTempLines:
             tmpL.alpha.addPeriod(tmpL.alpha.latestTimeT(), 99999999, 0, 0)

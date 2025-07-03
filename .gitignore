@@ -2,3 +2,5 @@
 .vscode
 temp
 output
+build
+dist
