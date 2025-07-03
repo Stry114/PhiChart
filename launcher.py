@@ -16,7 +16,7 @@ from autoMatch import Matcher
 from assets.lang import ZH_CN as lang
 
 top = Tk()
-top.title("PhiChart Launcher v0.3 by Stry")
+top.title("PhiChart Launcher v0.4 by Stry")
 top.minsize(width=1000, height=700)
 top.config(padx=20, pady=20)
 
@@ -106,6 +106,8 @@ def runningThread():
                 player.cmrY = float(lb5et4.get())
             if lb5et5.get() != "":
                 player.b = float(lb5et5.get())
+            if lb5int2.get() == 1:
+                player.enableNewVision = True
 
         if lb7int1.get() == 1:
             player.enableCompiler = True
@@ -201,7 +203,7 @@ def loadTips():
     ToolTip(lb5et3, lang.str11)
     ToolTip(lb5et4, lang.str12)
     ToolTip(lb5et5, lang.str27)
-    # ToolTip(lb5ck2, lang.str26)
+    ToolTip(lb5ck2, lang.str26)
     ToolTip(lb2et1, lang.str1)
     ToolTip(lb2et2, lang.str1)
     ToolTip(lb2et3, lang.str3)
@@ -354,8 +356,8 @@ lb5int1 = IntVar()
 lb5int2 = IntVar()
 lb5ck1 = ttk.Checkbutton(lb5, variable=lb5int1, text="启用立体谱面")
 lb5ck1.grid(row=0, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
-# lb5ck2 = ttk.Checkbutton(lb5, variable=lb5int2, text="仅对部分判定线生效")
-# lb5ck2.grid(row=6, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
+lb5ck2 = ttk.Checkbutton(lb5, variable=lb5int2, text="启用高视角")
+lb5ck2.grid(row=6, column=0, sticky=EW, padx=5, pady=5, columnspan=2)
 Label(lb5, text="流速（下落倍速）").grid(row=1, column=0)
 Label(lb5, text="Note出现的位置").grid(row=2, column=0)
 Label(lb5, text="摄像机水平位置").grid(row=3, column=0)

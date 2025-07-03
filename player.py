@@ -98,7 +98,7 @@ def mytimer(msg: str):
 
 
 # 添加高斯模糊
-def cv2_blur(surface, radius: float):
+def cv2_blur(surface, radius: int):
     # 确保半径是正奇数
     radius = int(max(1, radius))
     if radius % 2 == 0:
@@ -118,18 +118,18 @@ def apply_darken(surface, factor=0.5):
     return dark
 
 
-def colorize_grayscale(surface, color):
-    """将灰度图着色为指定颜色"""
-    colored = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-    for x in range(surface.get_width()):
-        for y in range(surface.get_height()):
-            gray = surface.get_at((x, y))[0]  # 取 R 值（灰度图 R=G=B）
-            if gray > 0:  # 如果不是纯黑
-                r = min(255, (gray * color[0]) // 255)
-                g = min(255, (gray * color[1]) // 255)
-                b = min(255, (gray * color[2]) // 255)
-                colored.set_at((x, y), (r, g, b, gray))  # 保留 Alpha 通道
-    return colored
+# def colorize_grayscale(surface, color):
+#     """将灰度图着色为指定颜色"""
+#     colored = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+#     for x in range(surface.get_width()):
+#         for y in range(surface.get_height()):
+#             gray = surface.get_at((x, y))[0]  # 取 R 值（灰度图 R=G=B）
+#             if gray > 0:  # 如果不是纯黑
+#                 r = min(255, (gray * color[0]) // 255)
+#                 g = min(255, (gray * color[1]) // 255)
+#                 b = min(255, (gray * color[2]) // 255)
+#                 colored.set_at((x, y), (r, g, b, gray))  # 保留 Alpha 通道
+#     return colored
 
 
 def colorize_grayscale(surface, color):
@@ -485,10 +485,10 @@ class Player:
 
         # 3D转谱
         self.enableCompiler = False
-        self.tempLineList: list[chart.Line] = []
-        self.tempLineListBG: list[chart.Line] = []
+        self.tempLineListTap: list[chart.Line] = []
+        self.tempLineListDrag: list[chart.Line] = []
+        self.tempLineListFlick: list[chart.Line] = []
         self.allTempLines: list[chart.Line] = []
-        self.allTempLinesBG: list[chart.Line] = []
 
         ### 固有对象
 
@@ -530,7 +530,7 @@ class Player:
         self.flickSound: pygame.mixer.Sound = ...
 
         # 启用船新视角
-        self.enableNewVision = True
+        self.enableNewVision = False
         # 下放线条选项
         self.displacementY = 0.6
 
@@ -553,10 +553,19 @@ class Player:
 
         return xn, yn
 
-    def getTempLine(self):
-        if len(self.tempLineList) > 0:
-            line = self.tempLineList[-1]
-            self.tempLineList.pop(-1)
+    def getTempLine(self, type_):
+        if type_ == 1 or type_ == "tap":
+            tempLineList = self.tempLineListTap
+        elif type_ == 2 or type_ == "drag":
+            tempLineList = self.tempLineListDrag
+        elif type_ == 4 or type_ == "flick":
+            tempLineList = self.tempLineListFlick
+        else:
+            raise Exception("Unknown temp line type")
+
+        if len(tempLineList) > 0:
+            line = tempLineList[-1]
+            tempLineList.pop(-1)
             return line
         else:
             line = chart.Line(self.chart.bpm)
@@ -566,46 +575,19 @@ class Player:
             line.move2.addPeriod(0, self.timeT, 0, 0)
             line.scaleX.addPeriod(0, self.timeT, 1.0, 1.0)
             line.scaleY.addPeriod(0, self.timeT, 1.0, 1.0)
-            line.color.addPeriod(0, self.timeT, [255,255,255], [255,255,255])
+            line.color.addPeriod(0, self.timeT, [255, 255, 255], [255, 255, 255])
             line.speed.addPeriod(0, 9999999, 1, 1)
             self.allTempLines.append(line)
             return line
 
-    def getTempLineBG(self):
-        if len(self.tempLineListBG) > 0:
-            line = self.tempLineListBG[-1]
-            self.tempLineListBG.pop(-1)
-            return line
-        else:
-            line = chart.Line(self.chart.bpm)
-            line.rotate.addPeriod(0, self.timeT, 0, 0)
-            line.alpha.addPeriod(0, self.timeT, 0, 0)
-            line.move1.addPeriod(0, self.timeT, 0, 0)
-            line.move2.addPeriod(0, self.timeT, 0, 0)
-            line.scaleX.addPeriod(0, self.timeT, 1.0, 1.0)
-            line.scaleY.addPeriod(0, self.timeT, 1.0, 1.0)
-            line.color.addPeriod(0, self.timeT, [255,255,255], [255,255,255])
-            line.speed.addPeriod(0, 9999999, 1, 1)
-            self.allTempLinesBG.append(line)
-            return line
-
-    def freeTempLine(self, line: chart.Line, note, isOutLine=False):
-        self.tempLineList.append(line)
-        if note.type_ == 1 or note.type_ == 3:
-            colorFill = [10, 195, 255]
+    def freeTempLine(self, note: chart.Note, isOutLine=False):
+        if note.type_ == 1:
+            self.tempLineListTap.append(note.tempLine)
         elif note.type_ == 2:
-            colorFill = [240, 237, 105]
-        else:
-            colorFill = [245, 67, 101]
-        line.color.addPeriod(line.color.latestTimeT(), self.timeT, colorFill, colorFill)
+            self.tempLineListDrag.append(note.tempLine)
+        elif note.type_ == 4:
+            self.tempLineListFlick.append(note.tempLine)
 
-    def freeTempLineBG(self, line: chart.Line, note, isOutLine=False):
-        self.tempLineListBG.append(line)
-        if note.doubleHit:
-            colorFill = [254, 254, 102]
-        else:
-            colorFill = [255, 255, 255]
-        line.color.addPeriod(line.color.latestTimeT(), self.timeT, colorFill, colorFill)
 
     def render(self):
 
@@ -614,8 +596,6 @@ class Player:
         self.holdCount = 0
 
         mytimer("初始化")
-
-        # print(len(self.tempLineList), len(self.allTempLines))
 
         # 击中特效的方块飞舞
         for effect in self.hitEffectList:
@@ -846,11 +826,9 @@ class Player:
                     yt = y + dx * Vsin
                     if not (-self.noteSize*0.5 < xt < self.width+self.noteSize*0.5
                             and -self.noteSize*0.5 < yt/self.displacementY < self.height+self.noteSize*0.5):
-                        if self.enableCompiler and note.tempLine1 is not None:
-                            self.freeTempLine(note.tempLine1, note)
-                            self.freeTempLineBG(note.tempLine2, note, True)
-                            note.tempLine1 = None
-                            note.tempLine2 = None
+                        if self.enableCompiler and note.tempLine is not None:
+                            self.freeTempLine(note)
+                            note.tempLine = None
                         continue
 
                     # 3D修正
@@ -887,11 +865,9 @@ class Player:
                     elif note.type_ == 4:
                         self.flickSound.play()
 
-                    if note.tempLine1 is not None:
-                        self.freeTempLine(note.tempLine1, note)
-                        self.freeTempLineBG(note.tempLine2, note, True)
-                        note.tempLine1 = None
-                        note.tempLine2 = None
+                    if note.tempLine is not None:
+                        self.freeTempLine(note)
+                        note.tempLine = None
                     continue
 
                 if note.alpha == 0:
@@ -938,44 +914,25 @@ class Player:
 
                 if self.enableCompiler:
 
-                    if note.tempLine1 is None:
-                        tmpL1 = self.getTempLine()
-                        tmpL2 = self.getTempLineBG()
-                        note.tempLine1 = tmpL1
-                        note.tempLine2 = tmpL2
+                    if note.tempLine is None:
+                        tmpL = self.getTempLine(note.type_)
+                        note.tempLine = tmpL
 
-                        tmpL1.alpha.addPeriod(tmpL1.alpha.latestTimeT(), self.timeT, 0, 0)
-                        tmpL1.move1.addPeriod(tmpL1.move1.latestTimeT(), self.timeT, -100, xn/self.width)
-                        tmpL1.move2.addPeriod(tmpL1.move2.latestTimeT(), self.timeT, -100, yn/self.height)
-                        tmpL1.scaleX.addPeriod(tmpL1.scaleX.latestTimeT(), self.timeT, 1.0, self.noteSize/1.06*sr/self.lineLength)
-                        tmpL1.scaleY.addPeriod(tmpL1.scaleY.latestTimeT(), self.timeT, 1.0, self.noteSize/10*sr/self.lineWidth)
-                        tmpL1.rotate.addPeriod(tmpL1.rotate.latestTimeT(), self.timeT, 0, r)
-
-                        tmpL2.alpha.addPeriod(tmpL2.alpha.latestTimeT(), self.timeT, 0, 0)
-                        tmpL2.move1.addPeriod(tmpL2.move1.latestTimeT(), self.timeT, -100, xn/self.width)
-                        tmpL2.move2.addPeriod(tmpL2.move2.latestTimeT(), self.timeT, -100, yn/self.height)
-                        tmpL2.scaleX.addPeriod(tmpL2.scaleX.latestTimeT(), self.timeT, 1.0, self.noteSize*sr/self.lineLength)
-                        tmpL2.scaleY.addPeriod(tmpL2.scaleY.latestTimeT(), self.timeT, 1.0, self.noteSize/10*sr/self.lineWidth)
-                        tmpL2.rotate.addPeriod(tmpL2.rotate.latestTimeT(), self.timeT, 0, r)
+                        tmpL.alpha.addPeriod(tmpL.alpha.latestTimeT(), self.timeT, 0, 0)
+                        tmpL.move1.addPeriod(tmpL.move1.latestTimeT(), self.timeT, -100, xn/self.width)
+                        tmpL.move2.addPeriod(tmpL.move2.latestTimeT(), self.timeT, -100, yn/self.height)
+                        tmpL.scaleX.addPeriod(tmpL.scaleX.latestTimeT(), self.timeT, 1.0, sr/5.0)
+                        tmpL.scaleY.addPeriod(tmpL.scaleY.latestTimeT(), self.timeT, 1.0, sr/5.0)
+                        tmpL.rotate.addPeriod(tmpL.rotate.latestTimeT(), self.timeT, 0, r)
 
                     else:
-
-                        tmpL1 = note.tempLine1
-                        tmpL1.alpha.addPeriod(tmpL1.alpha.latestTimeT(), self.timeT, 1.0, 1.0)
-                        tmpL1.move1.addPeriod(tmpL1.move1.latestTimeT(), self.timeT, tmpL1.move1.latestValue(), xn/self.width)
-                        tmpL1.move2.addPeriod(tmpL1.move2.latestTimeT(), self.timeT, tmpL1.move2.latestValue(), yn/self.height)
-                        tmpL1.scaleX.addPeriod(tmpL1.scaleX.latestTimeT(), self.timeT, tmpL1.scaleX.latestValue(), self.noteSize/1.06*sr/self.lineLength)
-                        tmpL1.scaleY.addPeriod(tmpL1.scaleY.latestTimeT(), self.timeT, tmpL1.scaleY.latestValue(), self.noteSize/10*sr/self.lineWidth)
-                        tmpL1.rotate.addPeriod(tmpL1.rotate.latestTimeT(), self.timeT, tmpL1.rotate.latestValue(), r)
-
-                        tmpL2 = note.tempLine2
-                        tmpL2.alpha.addPeriod(tmpL2.alpha.latestTimeT(), self.timeT, 1.0, 1.0)
-                        tmpL2.move1.addPeriod(tmpL2.move1.latestTimeT(), self.timeT, tmpL2.move1.latestValue(), xn/self.width)
-                        tmpL2.move2.addPeriod(tmpL2.move2.latestTimeT(), self.timeT, tmpL2.move2.latestValue(), yn/self.height)
-                        tmpL2.scaleX.addPeriod(tmpL2.scaleX.latestTimeT(), self.timeT, tmpL2.scaleX.latestValue(), self.noteSize*sr/self.lineLength)
-                        tmpL2.scaleY.addPeriod(tmpL2.scaleY.latestTimeT(), self.timeT, tmpL2.scaleY.latestValue(), self.noteSize/10*sr/self.lineWidth)
-                        tmpL2.rotate.addPeriod(tmpL2.rotate.latestTimeT(), self.timeT, tmpL2.rotate.latestValue(), r)
-
+                        tmpL = note.tempLine
+                        tmpL.alpha.addPeriod(tmpL.alpha.latestTimeT(), self.timeT, 1.0, 1.0)
+                        tmpL.move1.addPeriod(tmpL.move1.latestTimeT(), self.timeT, tmpL.move1.latestValue(), xn/self.width)
+                        tmpL.move2.addPeriod(tmpL.move2.latestTimeT(), self.timeT, tmpL.move2.latestValue(), yn/self.height)
+                        tmpL.scaleX.addPeriod(tmpL.scaleX.latestTimeT(), self.timeT, tmpL.scaleX.latestValue(), sr/5.0)
+                        tmpL.scaleY.addPeriod(tmpL.scaleY.latestTimeT(), self.timeT, tmpL.scaleY.latestValue(), sr/5.0)
+                        tmpL.rotate.addPeriod(tmpL.rotate.latestTimeT(), self.timeT, tmpL.rotate.latestValue(), r)
 
                 x0 = int(xn - surface.get_width() / 2)
                 y0 = int(yn + surface.get_height() / 2)
@@ -1413,7 +1370,7 @@ class Player:
 
             draw_text(
                 self.foreground_layer,
-                f"判定线总数：{len(self.allTempLinesBG)+len(self.allTempLines)+len(self.chart.lineList)}",
+                f"判定线总数：{len(self.allTempLines)+len(self.chart.lineList)}",
                 self.font18, self.WHITE,
                 pos=(int(self.width/2), int(self.height/2+60)),
                 align="C",
@@ -1604,11 +1561,11 @@ class Player:
                 self.bgImage = pygame.image.load(self.illuFile).convert()
                 self.bgImage = pygame.transform.scale(self.bgImage,
                                                                (self.width / self.FOM, self.height / self.FOM))
-                self.bgImage1 = cv2_blur(self.bgImage, self.background_blurRadius / self.FOM)
+                self.bgImage1 = cv2_blur(self.bgImage, round(self.background_blurRadius / self.FOM))
                 self.bgImage1 = apply_darken(self.bgImage1, self.background_brightness*0.4)
                 self.bgImage1 = pygame.transform.smoothscale(self.bgImage1, (self.width, self.height))
 
-                self.bgImage2 = cv2_blur(self.bgImage, self.background_blurRadius / self.FOM)
+                self.bgImage2 = cv2_blur(self.bgImage, round(self.background_blurRadius / self.FOM))
                 self.bgImage2 = apply_darken(self.bgImage2, self.background_brightness)
                 self.bgImage2 = pygame.transform.smoothscale(self.bgImage2, (self.mw, self.mh))
                 self.bgImage1.blit(self.bgImage2, (self.mx1, self.my1), )
@@ -1617,7 +1574,7 @@ class Player:
                 self.background_layer = pygame.image.load(self.illuFile).convert()
                 self.background_layer = pygame.transform.scale(self.background_layer,
                                                                (self.width / self.FOM, self.height / self.FOM))
-                self.background_layer = cv2_blur(self.background_layer, self.background_blurRadius / self.FOM)
+                self.background_layer = cv2_blur(self.background_layer, round(self.background_blurRadius / self.FOM))
                 self.background_layer = apply_darken(self.background_layer, self.background_brightness)
                 self.background_layer = pygame.transform.smoothscale(self.background_layer, (self.width, self.height))
 
@@ -1687,8 +1644,6 @@ class Player:
         # 计算铺面延迟
         self.timeS = - self.chartDelay + self.startTimeS
         self.timeT = self.timeS * self.BPM / 1.875
-        # 是否处于低镜头模式
-        pressDown: bool = False
 
         # 播放bgm
         pygame.mixer.music.play(start=self.startTimeS)
@@ -1769,12 +1724,19 @@ class Player:
             for note in line.noteList:
                 note.alpha = 0
 
+        for line in self.tempLineListTap:
+            line.texture = "tap.png"
+        for line in self.tempLineListDrag:
+            line.texture = "drag.png"
+        for line in self.tempLineListFlick:
+            line.texture = "flick.png"
+
         for line in self.chart.lineList:
             for i in range(len(line.move2.startTimeList)):
                 line.move2.endValueList[i] *= self.displacementY
                 line.move2.startValueList[i] *= self.displacementY
 
-        for tmpL in self.allTempLinesBG + self.allTempLines:
+        for tmpL in self.allTempLines:
             tmpL.alpha.addPeriod(tmpL.alpha.latestTimeT(), 99999999, 0, 0)
             tmpL.move1.addPeriod(tmpL.move1.latestTimeT(), 99999999, -1, -1)
             tmpL.move2.addPeriod(tmpL.move2.latestTimeT(), 99999999, -1, -1)
@@ -1804,7 +1766,7 @@ Composer: {self.chart.composer}
 Charter: {self.chart.charter}
 Illustrator: {self.chart.illustration}"""
 
-        clear_directory("temp")
+        clear_directory("temp", clear=True)
         clear_directory("output", clear=False)
 
         with open("temp/3dChart.json", "w", encoding="utf-8") as outfile:
@@ -1821,6 +1783,9 @@ Illustrator: {self.chart.illustration}"""
         with zipfile.ZipFile("output/"+self.name+'.zip', 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipf.write("temp/3dChart.json", "3dChart.json")
             zipf.write("temp/info.txt", "info.txt")
+            zipf.write("assets/Tap.png", "tap.png")
+            zipf.write("assets/Drag.png", "drag.png")
+            zipf.write("assets/Flick.png", "flick.png")
             zipf.write(self.audioFile, self.chart.song)
             zipf.write(self.illuFile, self.chart.bg)
 

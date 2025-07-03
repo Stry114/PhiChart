@@ -163,8 +163,7 @@ class Note:
         self.doubleHit = False
 
         # 转谱时的临时线
-        self.tempLine1: Line|None = None
-        self.tempLine2: Line|None = None
+        self.tempLine: Line|None = None
 
     def toJson(self):
         return (
@@ -194,6 +193,7 @@ class Line:
         self.scaleX = LineTimer(bpm, 1.0)
         self.scaleY = LineTimer(bpm, 1.0)
         self.color = ColorLineTimer(bpm)
+        self.texture = "line.png"
 
 
         # 运行时变量
@@ -322,7 +322,7 @@ class Line:
         lineDict = {
             "Group": 0,
             "Name": "Untitled",
-            "Texture": "line.png",
+            "Texture": self.texture,
             "alphaControl": [
                 {
                     "alpha": 1.0,
@@ -623,6 +623,7 @@ class Chart:
     def toRPEJson(self):
 
         chartDict: dict = {
+            "annotation": "This chart was created using PhiChart. For more information, please visit the Github repository.",
             "BPMList": [
                 {
                     "bpm": self.bpm,
