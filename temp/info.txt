@@ -1,0 +1,10 @@
+#
+Name: PRAGMATISM -RESURRECTION- (CENTER)
+Path: 20250722
+Song: 5183579995826290.wav
+Picture: 5183579995826290.png
+Chart: 3dChart.json
+Level: BYD Lv.16.8
+Composer: Laur
+Charter: 逸晨Stry
+Illustrator: シエラ（Design: 祈莲）

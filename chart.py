@@ -81,7 +81,7 @@ class LineTimer:
                 right = mid - 1
             else:  # target 大于当前区间结束，更新左边界
                 left = mid + 1
-        raise IndexError("Time index out of defineded range of timer.")
+        return self.defaultValue
 
 
 class ColorLineTimer(LineTimer):
@@ -217,7 +217,7 @@ class Line:
         for i in range(self.speed.peroidCount):
             s = self.speed.startTimeList[i]
             e = self.speed.endTimeList[i]
-            if not s <= time_ < e:
+            if not s <= time_ < e and i != len(self.speed.startTimeList) - 1:
                 pos += (e - s) * self.speed.startValueList[i] * 1.875 / self.bpm
             else:
                 return (time_ - s) * self.speed.startValueList[i] * 1.875 / self.bpm + pos

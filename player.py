@@ -488,6 +488,9 @@ class Player:
         self.tempLineListTap: list[chart.Line] = []
         self.tempLineListDrag: list[chart.Line] = []
         self.tempLineListFlick: list[chart.Line] = []
+        self.tempLineListTapHL: list[chart.Line] = []
+        self.tempLineListDragHL: list[chart.Line] = []
+        self.tempLineListFlickHL: list[chart.Line] = []
         self.allTempLines: list[chart.Line] = []
 
         ### 固有对象
@@ -553,15 +556,25 @@ class Player:
 
         return xn, yn
 
-    def getTempLine(self, type_):
-        if type_ == 1 or type_ == "tap":
-            tempLineList = self.tempLineListTap
-        elif type_ == 2 or type_ == "drag":
-            tempLineList = self.tempLineListDrag
-        elif type_ == 4 or type_ == "flick":
-            tempLineList = self.tempLineListFlick
+    def getTempLine(self, type_, doubleHit: bool):
+        if doubleHit:
+            if type_ == 1 or type_ == "tap":
+                tempLineList = self.tempLineListTapHL
+            elif type_ == 2 or type_ == "drag":
+                tempLineList = self.tempLineListDragHL
+            elif type_ == 4 or type_ == "flick":
+                tempLineList = self.tempLineListFlickHL
+            else:
+                raise Exception("Unknown temp line type")
         else:
-            raise Exception("Unknown temp line type")
+            if type_ == 1 or type_ == "tap":
+                tempLineList = self.tempLineListTap
+            elif type_ == 2 or type_ == "drag":
+                tempLineList = self.tempLineListDrag
+            elif type_ == 4 or type_ == "flick":
+                tempLineList = self.tempLineListFlick
+            else:
+                raise Exception("Unknown temp line type")
 
         if len(tempLineList) > 0:
             line = tempLineList[-1]
@@ -581,12 +594,20 @@ class Player:
             return line
 
     def freeTempLine(self, note: chart.Note, isOutLine=False):
-        if note.type_ == 1:
-            self.tempLineListTap.append(note.tempLine)
-        elif note.type_ == 2:
-            self.tempLineListDrag.append(note.tempLine)
-        elif note.type_ == 4:
-            self.tempLineListFlick.append(note.tempLine)
+        if note.doubleHit:
+            if note.type_ == 1:
+                self.tempLineListTapHL.append(note.tempLine)
+            elif note.type_ == 2:
+                self.tempLineListDragHL.append(note.tempLine)
+            elif note.type_ == 4:
+                self.tempLineListFlickHL.append(note.tempLine)
+        else:
+            if note.type_ == 1:
+                self.tempLineListTap.append(note.tempLine)
+            elif note.type_ == 2:
+                self.tempLineListDrag.append(note.tempLine)
+            elif note.type_ == 4:
+                self.tempLineListFlick.append(note.tempLine)
 
 
     def render(self):
@@ -744,7 +765,7 @@ class Player:
                 frameDelta = 0.5 / self.FPS * self.BPM / 1.875 * 0
 
                 if note.time_ < self.timeT + frameDelta < note.time_ + note.holdTime:
-                    if self.frameIndex % 10 == 0:
+                    if self.frameIndex % 15 == 0:
                         effect = HitEffect(xn, yn)
                         self.hitEffectList.append(effect)
 
@@ -752,6 +773,10 @@ class Player:
                     note.hit = True
                     self.combo += 1
                     self.score += 1 * 10 ** 6 / self.chart.noteCount
+
+                    effect = HitEffect(xn, yn)
+                    self.hitEffectList.append(effect)
+
                 if note.time_ < self.timeT + frameDelta and not note.begin:
                     note.begin = True
                     self.tapSound.play()
@@ -915,7 +940,7 @@ class Player:
                 if self.enableCompiler:
 
                     if note.tempLine is None:
-                        tmpL = self.getTempLine(note.type_)
+                        tmpL = self.getTempLine(note.type_, note.doubleHit)
                         note.tempLine = tmpL
 
                         tmpL.alpha.addPeriod(tmpL.alpha.latestTimeT(), self.timeT, 0, 0)
@@ -1249,17 +1274,20 @@ class Player:
         )
 
         pygame.draw.polygon(
-            self.foreground_layer, (212, 255, 255, 200),
+            #self.foreground_layer, (212, 255, 255, 200),
+            self.foreground_layer, (156, 233, 255, 175),
             ((t3, ty3), (t8, ty8), (a8, ay8), (a3, ay3),)
         )
 
         pygame.draw.polygon(
-            self.foreground_layer, (212, 255, 255),
+            #self.foreground_layer, (212, 255, 255),
+            self.foreground_layer, (156, 233, 255, 255),
             ((t4, ty4), (t5, ty5), (a5, ay5), (a4, ay4),)
         )
 
         pygame.draw.polygon(
-            self.foreground_layer, (212, 255, 255),
+            #self.foreground_layer, (212, 255, 255),
+            self.foreground_layer, (156, 233, 255, 255),
             ((t6, ty6), (t7, ty7), (a7, ay7), (a6, ay6),)
         )
 
@@ -1604,10 +1632,11 @@ class Player:
 
         # 加载bgm
         pygame.mixer.music.load(self.audioFile)
+        pygame.mixer.music.set_volume(0.4)
         self.waveDurationS = pygame.mixer.Sound(self.audioFile).get_length()
 
         # 显示消息
-        self.titleMsg("读取谱面中", "少女祈祷中...")
+        self.titleMsg("读取谱面喵~", "关注逸晨Stry谢谢喵~")
 
         # 加载铺面数据
         self.chart = analyzer.analyzeJson(self.chartFile)
@@ -1730,6 +1759,12 @@ class Player:
             line.texture = "drag.png"
         for line in self.tempLineListFlick:
             line.texture = "flick.png"
+        for line in self.tempLineListTapHL:
+            line.texture = "tapHL.png"
+        for line in self.tempLineListDragHL:
+            line.texture = "dragHL.png"
+        for line in self.tempLineListFlickHL:
+            line.texture = "flickHL.png"
 
         for line in self.chart.lineList:
             for i in range(len(line.move2.startTimeList)):
@@ -1786,6 +1821,9 @@ Illustrator: {self.chart.illustration}"""
             zipf.write("assets/Tap.png", "tap.png")
             zipf.write("assets/Drag.png", "drag.png")
             zipf.write("assets/Flick.png", "flick.png")
+            zipf.write("assets/TapHL.png", "tapHL.png")
+            zipf.write("assets/DragHL.png", "dragHL.png")
+            zipf.write("assets/FlickHL.png", "flickHL.png")
             zipf.write(self.audioFile, self.chart.song)
             zipf.write(self.illuFile, self.chart.bg)
 
