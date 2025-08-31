@@ -1,12 +1,26 @@
+import copy
+
+
 class LineTimer:
     def __init__(self, bpm, defaultValue: float = 0):
         self.bpm = bpm
         self.peroidCount = 0
-        self.endTimeList = []
-        self.endValueList = []
-        self.startTimeList = []
-        self.startValueList = []
+        self.endTimeList: list[float] = []
+        self.endValueList: list[float] = []
+        self.startTimeList: list[float] = []
+        self.startValueList: list[float] = []
         self.defaultValue = defaultValue
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls(self.bpm, self.defaultValue)
+        memo[id(self)] = result
+        result.peroidCount = copy.deepcopy(self.peroidCount, memo)
+        result.endTimeList = copy.deepcopy(self.endTimeList, memo)
+        result.endValueList = copy.deepcopy(self.endValueList, memo)
+        result.startTimeList = copy.deepcopy(self.startTimeList, memo)
+        result.startValueList = copy.deepcopy(self.startValueList, memo)
+        return result
 
     def second(self, time_, baseBPM=None):
         if baseBPM is None:
@@ -68,21 +82,28 @@ class LineTimer:
             return self.endValueList[-1]
 
         left = 0
-        right = self.peroidCount
+        right = len(self.startValueList)
         while left <= right:
             mid = (left + right) // 2
             start, end = self.startTimeList[mid], self.endTimeList[mid]
-            if start <= time_ <= end:  # 检查 target 是否在当前中间区间内
+            if start <= time_ < end:  # 检查 target 是否在当前中间区间内
                 d = (time_ - start) / (end - start)
                 a = self.startValueList[mid]
                 b = self.endValueList[mid]
                 return (b - a) * d + a
+            elif time_ == end:
+                return self.endValueList[mid]
             elif time_ < start:  # target 小于当前区间起始，更新右边界
                 right = mid - 1
             else:  # target 大于当前区间结束，更新左边界
                 left = mid + 1
         return self.defaultValue
 
+    def getValue(self, time_):
+        if time_ > self.endTimeList[-1]:
+            return self.defaultValue
+        else:
+            return self.__call__(time_)
 
 class ColorLineTimer(LineTimer):
     def __init__(self, bpm, defaultValue: list[int] = None):
@@ -155,8 +176,14 @@ class Note:
         self.floorPos = floorPos
         self.floorPosT: float | None = None
 
+        # 键尺寸
+        self.size = 1.0
         # 键透明度
         self.alpha = 255
+        # 可视时间
+        self.visibleTime = 999999.0
+        # 是否假键
+        self.isFake = False
 
         self.hit = False
         self.begin = False
@@ -164,6 +191,29 @@ class Note:
 
         # 转谱时的临时线
         self.tempLine: Line|None = None
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls(
+            copy.deepcopy(self.type_, memo),
+            copy.deepcopy(self.time_, memo),
+            copy.deepcopy(self.posX, memo),
+            copy.deepcopy(self.floorPos, memo),
+            copy.deepcopy(self.speed, memo),
+            copy.deepcopy(self.holdTime, memo),
+            copy.deepcopy(self.above, memo)
+        )
+        memo[id(self)] = result
+        result.size = copy.deepcopy(self.size, memo)
+        result.alpha = copy.deepcopy(self.alpha, memo)
+        result.visibleTime = copy.deepcopy(self.visibleTime, memo)
+        result.isFake = copy.deepcopy(self.isFake, memo)
+        result.hit = copy.deepcopy(self.hit, memo)
+        result.begin = copy.deepcopy(self.begin, memo)
+        result.doubleHit = copy.deepcopy(self.doubleHit, memo)
+        result.floorPosT = copy.deepcopy(self.floorPosT, memo)
+        result.tempLine = copy.deepcopy(self.tempLine, memo)
+        return result
 
     def toJson(self):
         return (
@@ -177,6 +227,43 @@ class Note:
             "}"
         )
 
+class Period:
+    def __init__(self, length: int, name="Period"):
+        self.name = name
+        self.length = length
+        self.colorIndex = 3
+        self.notes: list[Note] = []
+
+        self.move1 = LineTimer(0)
+        self.move2 = LineTimer(0)
+        self.theta = LineTimer(0)
+        self.speed = LineTimer(0, 1.0)
+        self.alpha = LineTimer(0, 1.0)
+        self.rotate = LineTimer(0, 0.0)
+
+    def toJsonDic(self):
+        dic = {
+            "name": self.name,
+            "length": self.length,
+            "colorIndex": self.colorIndex,
+            "move1": [
+                self.move1.startTimeList, self.move1.endTimeList,
+                self.move1.startValueList, self.move1.endValueList
+            ],
+            "move2": [
+                self.move2.startTimeList, self.move2.endTimeList,
+                self.move2.startValueList, self.move2.endValueList
+            ],
+            "alpha": [
+                self.alpha.startTimeList, self.alpha.endTimeList,
+                self.alpha.startValueList, self.alpha.endValueList
+            ],
+            "rotate": [
+                self.rotate.startTimeList, self.rotate.endTimeList,
+                self.rotate.startValueList, self.rotate.endValueList
+            ]
+        }
+        return dic
 
 class Line:
     def __init__(self, bpm):
@@ -184,9 +271,11 @@ class Line:
         self.move1 = LineTimer(bpm)
         self.move2 = LineTimer(bpm)
         self.speed = LineTimer(bpm, 1.0)
-        self.alpha = LineTimer(bpm, 1.0)
+        self.alpha = LineTimer(bpm, 0.0)
         self.rotate = LineTimer(bpm, 0.0)
 
+        # 3D事件
+        self.theta = LineTimer(bpm, 0.0)
         self.noteList: list[Note] = []
 
         # RPE 扩展线条属性
@@ -195,9 +284,26 @@ class Line:
         self.color = ColorLineTimer(bpm)
         self.texture = "line.png"
 
-
         # 运行时变量
         self.cmrH: float = 1.0
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls(self.bpm)
+        memo[id(self)] = result
+        result.move1 = copy.deepcopy(self.move1, memo)
+        result.move2 = copy.deepcopy(self.move2, memo)
+        result.speed = copy.deepcopy(self.speed, memo)
+        result.alpha = copy.deepcopy(self.alpha, memo)
+        result.rotate = copy.deepcopy(self.rotate, memo)
+        result.theta = copy.deepcopy(self.theta, memo)
+        result.noteList = copy.deepcopy(self.noteList, memo)
+        result.scaleX = copy.deepcopy(self.scaleX, memo)
+        result.scaleY = copy.deepcopy(self.scaleY, memo)
+        result.color = copy.deepcopy(self.color, memo)
+        result.texture = copy.deepcopy(self.texture, memo)
+        result.cmrH = copy.deepcopy(self.cmrH, memo)
+        return result
 
     def addNote(self, note: Note):
         self.noteList.append(note)
@@ -291,6 +397,25 @@ class Line:
             f'"judgeLineDisappearEvents":[{",".join(alphaEvents)}]'
             "}"
         )
+
+    def fastCalcFloorPos(self):
+        j = 0
+        floorBase = 0
+        for i in range(len(self.speed.startTimeList)):
+            st = self.speed.startTimeList[i]
+            et = self.speed.startTimeList[i+1] if i < len(self.speed.startTimeList)-1 else 9999999
+            s = self.speed.startValueList[i]
+            e = self.speed.endValueList[i]
+            for k in range(j, len(self.noteList)):
+                note = self.noteList[k]
+                if note.time_ >= et:
+                    floorBase += (et - st) * s * 1.875 / self.bpm
+                    break
+                else:
+                    note.floorPos = floorBase + (note.time_ - st) * s * 1.875 / self.bpm
+                    if note.type_ == 3:
+                        note.floorPosT = note.floorPos + note.holdTime * s * 1.875 / self.bpm
+                    j += 1
 
 
     def timeTtoBeat(self, timeT) -> list[int]:
@@ -413,15 +538,15 @@ class Line:
         for note in self.noteList:
             noteDict = {
                 "above": 1 if note.above else 2,
-                "alpha": note.alpha,
+                "alpha": int(note.alpha),
                 "endTime": self.timeTtoBeat(note.time_+note.holdTime),
-                "isFake": 0,
+                "isFake": 1 if note.isFake else 0,
                 "positionX": note.posX * 75.951,
                 "size": 1.0,
                 "speed": note.speed,
                 "startTime": self.timeTtoBeat(note.time_),
                 "type": self.de_convertType(note.type_),
-                "visibleTime": 999999.0,
+                "visibleTime": note.visibleTime,
                 "yOffset": 0.0
             }
             lineDict["notes"].append(noteDict)
@@ -482,10 +607,10 @@ class Line:
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
                 "easingType": 1,
-                "end": lineTimer.endValueList[i]*255,
+                "end": int(lineTimer.endValueList[i]*255),
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
-                "start": lineTimer.startValueList[i]*255,
+                "start": int(lineTimer.startValueList[i]*255),
                 "startTime": self.timeTtoBeat(lineTimer.startTimeList[i]),
             }
             lineDict["eventLayers"][0]["alphaEvents"].append(eventDict)
@@ -588,6 +713,31 @@ class Chart:
         self.duration = 0
         self.chartTime = 0
 
+        # 打点器打的点
+        self.beats = []
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls(self.RPE_Chart)
+        memo[id(self)] = result
+        result.bpm = copy.deepcopy(self.bpm, memo)
+        result.noteCount = copy.deepcopy(self.noteCount, memo)
+        result.lineList = copy.deepcopy(self.lineList, memo)
+        result.noteList = copy.deepcopy(self.noteList, memo)
+        result.RPE_level = copy.deepcopy(self.RPE_level, memo)
+        result.charter = copy.deepcopy(self.charter, memo)
+        result.composer = copy.deepcopy(self.composer, memo)
+        result.illustration = copy.deepcopy(self.illustration, memo)
+        result.name = copy.deepcopy(self.name, memo)
+        result.level = copy.deepcopy(self.level, memo)
+        result.id = copy.deepcopy(self.id, memo)
+        result.song = copy.deepcopy(self.song, memo)
+        result.bg = copy.deepcopy(self.bg, memo)
+        result.duration = copy.deepcopy(self.duration, memo)
+        result.chartTime = copy.deepcopy(self.chartTime, memo)
+        result.beats = copy.deepcopy(self.beats, memo)
+        return result
+
     def addLine(self, line: Line):
         self.bpm = line.bpm
         self.lineList.append(line)
@@ -599,6 +749,12 @@ class Chart:
         print(" " * 4 * (level + 1) + f"line\t{len(self.lineList)}")
         for i in range(len(self.lineList)):
             self.lineList[i].report(level + 1, i)
+
+    def fastCalcFloorPos(self):
+        self.noteCount = 0
+        for line in self.lineList:
+            line.fastCalcFloorPos()
+            self.noteCount += len(line.noteList)
 
     @property
     def fullCombo(self):
@@ -651,3 +807,100 @@ class Chart:
         }
 
         return chartDict
+
+    def __deepcopy__(self, memo):
+        # 创建新实例
+        cls = self.__class__
+        result = cls(self.RPE_Chart)
+        memo[id(self)] = result
+
+        # 复制基本属性
+        result.bpm = copy.deepcopy(self.bpm, memo)
+        result.noteCount = copy.deepcopy(self.noteCount, memo)
+        result.RPE_level = copy.deepcopy(self.RPE_level, memo)
+        result.charter = copy.deepcopy(self.charter, memo)
+        result.composer = copy.deepcopy(self.composer, memo)
+        result.illustration = copy.deepcopy(self.illustration, memo)
+        result.name = copy.deepcopy(self.name, memo)
+        result.level = copy.deepcopy(self.level, memo)
+        result.id = copy.deepcopy(self.id, memo)
+        result.song = copy.deepcopy(self.song, memo)
+        result.bg = copy.deepcopy(self.bg, memo)
+        result.duration = copy.deepcopy(self.duration, memo)
+        result.chartTime = copy.deepcopy(self.chartTime, memo)
+        result.beats = copy.deepcopy(self.beats, memo)
+
+        # 深度复制 lineList 和 noteList
+        result.lineList = copy.deepcopy(self.lineList, memo)
+        result.noteList = copy.deepcopy(self.noteList, memo)
+
+        return result
+
+
+def newDefaultChart(bpm, numOfLine=24) -> Chart:
+    chart = Chart(True)
+    for i in range(numOfLine):
+        line = Line(bpm)
+        line.move1.addPeriod(0, 64, 0.5, 0.5)
+        line.move2.addPeriod(0, 64, 0.3, 0.3)
+        line.alpha.addPeriod(0, 64, 0.0, 0.0)
+        line.speed.addPeriod(0, 64, 1.0, 1.0)
+        line.theta.addPeriod(0, 64, 0.0, 0.0)
+        line.rotate.addPeriod(0,64, 0.0, 0.0)
+        chart.addLine(line)
+
+    return chart
+
+def getEventIndexByTime(lineTimer: LineTimer, t: int):
+    t = round(t)
+
+    # 找到光标前最近的事件
+    i = 0
+    while i < len(lineTimer.startTimeList)-1:
+        if lineTimer.startTimeList[i] < t <= lineTimer.startTimeList[i + 1]:
+            break
+        i += 1
+
+    if len(lineTimer.startTimeList) == 0:
+        lineTimer.startValueList.append(lineTimer.defaultValue)
+        lineTimer.endValueList.append(lineTimer.defaultValue)
+        lineTimer.startTimeList.append(0)
+        lineTimer.endTimeList.append(t)
+        return i
+    if lineTimer.endTimeList[i] == t:
+        print("set 1")
+        return i
+    if lineTimer.endTimeList[i] < t:
+        print("set 2")
+        st = lineTimer.endTimeList[i]
+        sv = lineTimer.endValueList[i]
+        lineTimer.startValueList.insert(i+1, sv)
+        lineTimer.endValueList.insert(i+1, 0)
+        lineTimer.startTimeList.insert(i+1, st)
+        lineTimer.endTimeList.insert(i+1, t)
+        return i+1
+    if lineTimer.endTimeList[i] > t:
+        print("set 3")
+        sv = lineTimer.startValueList[i] + ((lineTimer.endValueList[i] - lineTimer.startValueList[i])
+              * (t - lineTimer.startTimeList[i]) / (lineTimer.endTimeList[i] - lineTimer.startTimeList[i]))
+        lineTimer.startValueList.insert(i+1, sv)
+        lineTimer.endValueList.insert(i+1, lineTimer.endValueList[i])
+        lineTimer.startTimeList.insert(i+1, t)
+        lineTimer.endTimeList.insert(i+1, lineTimer.endTimeList[i])
+        lineTimer.endTimeList[i] = t
+        return i
+
+def exactPeriodFromLine(line: Line, t1, t2) -> Period:
+    period: Period = Period(t2-t1, "新的片段")
+
+    lt1s = (line.alpha, line.move1, line.move2, line.rotate)
+    lt2s = (period.alpha, period.move1, period.move2, period.rotate)
+
+    for j in range(len(lt1s)):
+        lineTimer1 = lt1s[j]
+        lineTimer2 = lt2s[j]
+        for t in range(int(t1), int(t2), 4):
+            lineTimer2.addPeriod(t-int(t1), t+4-int(t1), lineTimer1(t+0.01), lineTimer1(t+4.01))
+    return period
+
+

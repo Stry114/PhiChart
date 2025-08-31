@@ -710,6 +710,8 @@ class Player:
                     continue
                 if note.hit:
                     continue
+                if self.timeT < note.time_ - note.visibleTime * self.BPM / 1.875:
+                    continue
 
                 if self.timeT > note.time_:
                     dx = note.posX * self.X
@@ -840,6 +842,8 @@ class Player:
                 if note.type_ == 3:
                     continue
                 if note.hit:
+                    continue
+                if self.timeT < note.time_ - note.visibleTime * self.BPM / 1.875:
                     continue
 
                 dx = note.posX * self.X
@@ -1632,50 +1636,60 @@ class Player:
 
         # 加载bgm
         pygame.mixer.music.load(self.audioFile)
-        pygame.mixer.music.set_volume(0.4)
+        pygame.mixer.music.set_volume(0.8)
         self.waveDurationS = pygame.mixer.Sound(self.audioFile).get_length()
 
         # 显示消息
         self.titleMsg("读取谱面喵~", "关注逸晨Stry谢谢喵~")
 
         # 加载铺面数据
-        self.chart = analyzer.analyzeJson(self.chartFile)
-        self.BPM = self.chart.lineList[0].bpm
+        if self.chartFile is not None:
+            self.chart = analyzer.analyzeJson(self.chartFile)
+            self.BPM = self.chart.lineList[0].bpm
 
-        # 转谱处理Hold
-        if self.enableCompiler:
-            self.subtitle = "COMPILER"
+            # 转谱处理Hold
+            if self.enableCompiler:
+                self.subtitle = "COMPILER"
 
-            for line in self.chart.lineList:
-                for note in line.noteList:
-                    if note.type_ == 3:
-                        note.holdTime = 0
-                        note.type_ = 1
-                        note.speed = 1.0
+                for line in self.chart.lineList:
+                    for note in line.noteList:
+                        if note.type_ == 3:
+                            note.holdTime = 0
+                            note.type_ = 1
+                            note.speed = 1.0
 
-        # 处理全新视角
-        if not self.enableNewVision:
-            self.displacementY = 1.0
+            # 处理全新视角
+            if not self.enableNewVision:
+                self.displacementY = 1.0
 
     def mainloop(self):
 
         global running
         running = True
         clock = pygame.time.Clock()
+
+        # 处理整秒
+        self.startTimeS = self.startTimeS // 1
+
         # 计时器，用于评估性能
         timer = time.time()
         self.timeCost = 10 ** -6
         delta = 10 ** -6
+
         # 用于统计平均帧数
         frameCount = 0
         self.frameIndex = 0
         self.secondCount = self.FPS
+
         # 计算铺面延迟
         self.timeS = - self.chartDelay + self.startTimeS
         self.timeT = self.timeS * self.BPM / 1.875
 
+
         # 播放bgm
-        pygame.mixer.music.play(start=self.startTimeS)
+        print(f"{self.startTimeS=}")
+        pygame.mixer.music.play()
+        pygame.mixer.music.set_pos(self.startTimeS)
 
         # 处理startTimeS前的所有note
         for note in self.chart.noteList:

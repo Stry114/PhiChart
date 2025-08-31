@@ -1,0 +1,916 @@
+bpm = 123.0
+RPE_Chart = true
+RPE_level = 160.0
+charter = ""
+composer = ""
+illustration = ""
+name = "123"
+level = "123"
+id = "123"
+song = "DlyortzSP.wav"
+bg = "DlyortzSP.png"
+duration = 0.0
+chartTime = 0.0
+[[lineList]]
+bpm = 123.0
+texture = "line.png"
+cmrH = 1.0
+[[lineList.noteList]]
+type = 1
+time = 96.0
+posX = 0.0
+floorPos = 0
+speed = 1
+holdTime = 0
+above = true
+size = 1.0
+alpha = 255
+visibleTime = 999999.0
+isFake = false
+hit = false
+begin = false
+doubleHit = false
+
+[[lineList.noteList]]
+type = 1
+time = 128.0
+posX = 0.0
+floorPos = 0
+speed = 1
+holdTime = 0
+above = true
+size = 1.0
+alpha = 255
+visibleTime = 999999.0
+isFake = false
+hit = false
+begin = false
+doubleHit = false
+
+[[lineList.noteList]]
+type = 1
+time = 160.0
+posX = 0.0
+floorPos = 0
+speed = 1
+holdTime = 0
+above = true
+size = 1.0
+alpha = 255
+visibleTime = 999999.0
+isFake = false
+hit = false
+begin = false
+doubleHit = false
+
+[[lineList.noteList]]
+type = 1
+time = 192.0
+posX = 0.0
+floorPos = 0
+speed = 1
+holdTime = 0
+above = true
+size = 1.0
+alpha = 255
+visibleTime = 999999.0
+isFake = false
+hit = false
+begin = false
+doubleHit = false
+
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 10
+endTimeList = [ 64.0, 92.0, 100.0, 124.0, 132.0, 156.0, 164.0, 188.0, 196.0, 224.0,]
+endValueList = [ 0.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 1.0,]
+startTimeList = [ 0.0, 64.0, 92.0, 100.0, 124.0, 132.0, 156.0, 164.0, 188.0, 196.0,]
+startValueList = [ 0.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 0.0, 2.0, 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.97,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.97,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[[lineList]]
+bpm = 123.0
+noteList = []
+texture = "line.png"
+cmrH = 1.0
+
+[lineList.move1]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.5,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.5,]
+defaultValue = 0.0
+[lineList.move2]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.3,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.3,]
+defaultValue = 0.0
+[lineList.speed]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 1.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 1.0,]
+defaultValue = 1.0
+[lineList.alpha]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.rotate]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.theta]
+bpm = 123.0
+peroidCount = 1
+endTimeList = [ 64.0,]
+endValueList = [ 0.0,]
+startTimeList = [ 0.0,]
+startValueList = [ 0.0,]
+defaultValue = 0.0
+[lineList.scaleX]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0
+[lineList.scaleY]
+bpm = 123.0
+peroidCount = 0
+endTimeList = []
+endValueList = []
+startTimeList = []
+startValueList = []
+defaultValue = 1.0

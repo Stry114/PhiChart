@@ -196,6 +196,66 @@ def selectLines(*args):
         checkBox.pack(side=TOP, anchor=W, fill=X)
         checkboxList.append(checkBox)
 
+def adjustCmr():
+
+    def cnvMousePressed(event):
+        cnvW = canvas.winfo_width()
+        cnvH = canvas.winfo_height()
+        cmrX = event.x / cnvW
+        cmrY = event.y / cnvH
+        updateAdjCmr(cmrX, cmrY)
+
+    def updateAdjCmr(cmrX=0.5, cmrY=0.5):
+        canvas.delete("all")
+        cnvW = canvas.winfo_width()
+        cnvH = canvas.winfo_height()
+        x1, x3 = cnvW*0.15, cnvW*0.95
+        x7, x9 = cnvW*0.15, cnvW*0.95
+        y7, y1 = cnvH*0.15, cnvH*0.95
+        y9, y3 = cnvH*0.15, cnvH*0.95
+        x5, y5 = cmrX*cnvW, cmrY*cnvH
+        x4 = x1 * 0.7 + x5 * 0.3
+        x6 = x9 * 0.7 + x5 * 0.3
+        y2 = y1 * 0.7 + y5 * 0.3
+        y8 = y9 * 0.7 + y5 * 0.3
+        x4i = x1 * 0.2 + x5 * 0.8
+        x6i = x9 * 0.2 + x5 * 0.8
+        y2i = y1 * 0.2 + y5 * 0.8
+        y8i = y9 * 0.2 + y5 * 0.8
+
+        canvas.create_rectangle(x1, y1, x9, y9, outline="black", fill="white", width=3)
+        canvas.create_line(x7, y7, x5, y5)
+        canvas.create_line(x9, y9, x5, y5)
+        canvas.create_line(x3, y3, x5, y5)
+        canvas.create_line(x1, y1, x5, y5)
+        canvas.create_rectangle(x4i, y8i, x6i, y2i, fill="white", width=0)
+        canvas.create_line(x4, y2, x6, y2)
+        canvas.create_line(x4, y8, x6, y8)
+        canvas.create_line(x4, y8, x4, y2)
+        canvas.create_line(x6, y8, x6, y2)
+
+        canvas.create_line(x1, y7-10, x1, y7-30, fill="black", width=3)
+        canvas.create_line(x3, y7-10, x3, y7-30, fill="black", width=3)
+        canvas.create_line(x1-10, y1, x1-30, y1, fill="black", width=3)
+        canvas.create_line(x1-10, y7, x1-30, y7, fill="black", width=3)
+
+    root = Toplevel()
+    root.config(padx=40, pady=40)
+    root.title("调整摄像机位置")
+    root.geometry("400x400")
+
+    canvas = Canvas(root, bg="SystemButtonFace")
+    canvas.pack(fill=BOTH, expand=True)
+    adjCmrLb1 = Label(root, anchor=W)
+    adjCmrLb1.pack(side=TOP, fill=X)
+    adjCmrLb2 = Label(root, anchor=W)
+    adjCmrLb2.pack(side=TOP, fill=X)
+    adjCmrLb3 = Label(root, anchor=W)
+    adjCmrLb3.pack(side=TOP, fill=X)
+
+    root.bind("<Button-1>", cnvMousePressed)
+    root.after(500, updateAdjCmr)
+
 def loadTips():
     ToolTip(lb5ck1, lang.str8)
     ToolTip(lb5et1, lang.str9)
@@ -373,8 +433,8 @@ lb5et4 = ttk.Entry(lb5)
 lb5et4.grid(row=4, column=1, sticky=EW, padx=5, pady=5)
 lb5et5 = ttk.Entry(lb5)
 lb5et5.grid(row=5, column=1, sticky=EW, padx=5, pady=5)
-# lb5bt1 = ttk.Button(lb5ck2, text="选取", command=selectLines)
-# lb5bt1.pack(side=RIGHT, fill=Y)
+lb5bt1 = ttk.Button(lb5ck2, text="调整视角", command=adjustCmr)
+lb5bt1.pack(side=RIGHT, fill=Y)
 
 lb6.columnconfigure(index=0, weight=1)
 lb6.columnconfigure(index=1, weight=1)
