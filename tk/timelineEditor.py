@@ -1,28 +1,21 @@
 import enum
-import math
-import copy
-import os
-import time
 import zipfile
-
 import toml
-from pygame import mixer
+
+import subprocess
+import threading
 import multiprocessing as mp
-from tkinter import *
-from tkinter import ttk
-from tkinter import font
+
 from tkinter import filedialog
 from tkinter import messagebox
-
 from tk.FastBezierLookup import *
 from tk.chartException import *
 from tk.cubic_spline import *
 import tk.tomlIO as tomlIO
-from tk.color255 import *
-from tk.pullbar import *
 from tk.mixer import *
 from tk.mytk import *
-from chart import *
+from libs.chart import *
+
 import player
 
 clear_directory = player.clear_directory
@@ -37,6 +30,7 @@ class ScreenMode(enum.Enum):
     ALPHA = 4
     ROTATE = 5
     THETA = 6
+    MOVE3 = 7
 
 
 def timeTtoBeat(timeT: float):
@@ -60,24 +54,22 @@ def timeTtoBeat(timeT: float):
         return f"{timeT // 32:.0f}+{timeT % 32:.0f}/32"
 
 
-def PlayerProcess(chart: Chart, audioFile, illuFile, startTime: float):
+def PlayerProcess(chart: Chart, audioFile, illuFile, startTime: float, enable3D: bool):
     from player import Player
-    from autoMatch import Matcher
 
     chart.fastCalcFloorPos()
 
-    player = Player(w=800, h=600, fps=120)
+    player = Player(w=1000, h=800, fps=120)
     player.displacementY = 1.0
     player.audioFile = audioFile
     player.illuFile = illuFile
-    player.displayDebug = True
-    player.enable3D = False
     player.BPM = chart.bpm
 
     # 设置副标题
-    player.name = "Editor Preview"
-    player.level = "UN Lv.?"
-    player.subtitle = "PHICHART"
+    player.name = chart.name
+    player.level = chart.level
+    player.subtitle = "PREVIEW"
+    player.chartDelay = 0.0
 
     # 跳转起始时间
     player.startTimeS = startTime / chart.bpm * 1.875
@@ -256,6 +248,9 @@ class TimelineEditor:
         # 当前编辑器的渲染对象
         self.handles: list[Handle] = []
 
+        # 启用新ui
+        self.enableClassicUI = False
+
         # 显示判定范围
         self.displayJudgeArea = False
 
@@ -269,6 +264,9 @@ class TimelineEditor:
 
         # 音乐文件
         self.audioFile = audioFile
+        self.audioFile_025x = None
+        self.audioFile_075x = None
+        self.audioFile_050x = None
         # 音乐文件
         self.illuFile = illuFile
         # 项目之所在地
@@ -300,6 +298,10 @@ class TimelineEditor:
         self.sw1 = None
         self.sh1 = None
 
+        # tab切线相关
+        self.tabDragStartPos: tuple | None = None
+        self.tabFrame: Canvas|None = None
+
         # 曲线锚点
         self.acr1T: float | None = None
         self.acr2T: float | None = None
@@ -308,11 +310,18 @@ class TimelineEditor:
         self.bezierCurve: None | FastBezierLookup = None
         self.curvingHandle: EventHandle | None = None
 
-        # 播放器
+        # # 播放器
         mixer.init()
         mixer.music.load(self.audioFile)
         mixer.music.play()
         mixer.music.pause()
+
+        # 当前倍率
+        self.speed = 1.0
+
+        # self.audioPlayer = PygameAudioPlayer.NonBlockingAudioPlayer(self.audioFile)
+        # self.audioPlayer.play(speed=1.0)
+        # self.audioPlayer.pause()
         # 初始化营销
         self.tapSound = mixer.Sound("assets/click.wav")
         self.dragSound = mixer.Sound("assets/drag.wav")
@@ -362,12 +371,18 @@ class TimelineEditor:
         # self.tf0bt1.place(x=360, y=0, width=100, height=30)
 
         ## 选中
-        noteFgList = (None, MOVE1_COLOR, MOVE2_COLOR, ALPHA_COLOR, ROTATE_COLOR, SPEED_COLOR, THETA_COLOR)
-        noteList = ("Note", "move1", "move2", "Alpha", "Rotate", "Speed", "Theta")
+        noteFgList = (None, MOVE1_COLOR, MOVE2_COLOR, MOVE3_COLOR, ALPHA_COLOR, ROTATE_COLOR, SPEED_COLOR, THETA_COLOR)
+        noteList = ("Note", "move1", "move2", "move3", "Alpha", "Rotate", "Speed", "Theta")
         self.tf0rb2 = LiToolBox(self.toolFrame, noteList, noteFgList, self.changeScreenModeByToolBox)
         self.tf0rb2.build(210, 0, 400, 30)
         self.bt1 = LiButtonDark(self.toolFrame, text="预览（PhiChart Player）", height=2, command=self.launchPlayer, var=0)
         self.bt1.place(x=620, y=0, width=200, height=30)
+        self.bt2 = ButtonDark(self.toolFrame, text="1.0x", height=2, command=self.changeSpeed)
+        self.bt2.place(x=830, y=0, width=60, height=30)
+        self.bt3 = ButtonDark(self.toolFrame, text="+关键帧", height=2, command=self.addKeyFrame)
+        self.bt3.place(x=900, y=0, width=80, height=30)
+        self.bt3 = ButtonDark(self.toolFrame, text="喵~", height=2, command=self.changeUI)
+        self.bt3.place(x=990, y=0, width=40, height=30)
 
         self.canvas = Canvas(self.top, width=self.w0, height=self.h0, bg="#333", highlightthickness=0)
         self.canvas.pack(side=LEFT, fill=Y)
@@ -396,7 +411,7 @@ class TimelineEditor:
 
         self.lf2fr2 = FrameDark(self.lf2, pady=5)
         self.lf2fr2.pack(side=TOP, fill=X)
-        self.hooked = LiToolBotton(self.lf2fr2, text="钩定开关（Ctrl+H）", value=False)
+        self.hooked = LiToolBotton(self.lf2fr2, text="钩定开关（G/Ctrl+H）", value=False)
         self.hooked.pack(side=LEFT, fill=BOTH, expand=1, ipadx=10)
         self.judge = LiToolBotton(self.lf2fr2, text="判定/可见范围", value=True, command=self.setDisplayJudgeArea)
         self.judge.pack(side=LEFT, fill=BOTH, expand=1, ipadx=10)
@@ -419,7 +434,7 @@ class TimelineEditor:
         self.tf0et3 = LiFloatEntryDark(self.lf2, self.dt//32, command=self.setLineNumber, min=1, max=16)
         self.tf0et3.pack(side=TOP, fill=X)
         #lb1
-        self.screen = Canvas(self.lf1, bg="#333", highlightthickness=0)
+        self.screen = Canvas(self.lf1, bg="#282828", highlightthickness=0)
         self.screen.pack(side=TOP, fill=BOTH, expand=1)
 
         # lb0
@@ -453,6 +468,10 @@ class TimelineEditor:
         file_menu.add_command(label="打开项目所在的目录", command=self.openFileByExplorer)
         file_menu.add_command(label="恢复到自动保存的记录", command=self.recoverToAutoSave)
         file_menu.add_separator()
+        file_menu.add_command(label="从Json文件导入", command=self.loadFromJson)
+        file_menu.add_separator()
+        file_menu.add_command(label="优化官谱", command=self.officialChartRefine)
+        file_menu.add_separator()
         file_menu.add_command(label="关于", accelerator="F2", command=self.about)
         file_menu.add_separator()
         file_menu.add_command(label="退出", accelerator="Alt+F4", command=self.top.destroy)
@@ -472,13 +491,14 @@ class TimelineEditor:
         edit_menu.add_command(label="复制所有等时事件", accelerator="Ctrl+Shift+C", command=self.copyAll)
         edit_menu.add_command(label="粘贴到相同时间", accelerator="Ctrl+Shift+V", command=self.pasteBy)
         edit_menu.add_separator()
-        edit_menu.add_command(label="踩音工具", accelerator="Ctrl+B", command=self.beater)
-        edit_menu.add_command(label="Mixer", accelerator="Ctrl+M", command=self.star_mixer)
+        edit_menu.add_command(label="踩音工具", accelerator="B", command=self.beater)
+        edit_menu.add_command(label="Mixer", accelerator="M", command=self.star_mixer)
         edit_menu.add_separator()
 
         key_menu = Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="键(N)", menu=key_menu)
         key_menu.add_command(label="反转", command=self.mirrorX)
+        key_menu.add_command(label="启用/禁用3D", command=self.ban3D)
         key_menu.add_separator()
         key_menu.add_command(label="键属性与参数", accelerator="中键", command=self.noteAttribute)
         key_menu.add_command(label="键高级筛选", accelerator="Ctrl+F", command=self.noteFilter)
@@ -506,6 +526,7 @@ class TimelineEditor:
         self.menubar.add_cascade(label="视图(V)", menu=view_menu)
         view_menu.add_command(label="播放/暂停", accelerator="Space", command=self.play)
         view_menu.add_command(label="预览", accelerator="Ctrl+P", command=self.launchPlayer)
+        view_menu.add_command(label="预览（启用3D）", command=lambda:self.launchPlayer(enable3D=True))
 
         self.top.bind("<Configure>", self.onConfigure)
 
@@ -542,14 +563,14 @@ class TimelineEditor:
         self.top.bind("<Control-s>", self.save)
         self.top.bind("<Control-C>", self.copy)
         self.top.bind("<Control-c>", self.copy)
+        self.top.bind("<Control-B>", self.ban3D)
+        self.top.bind("<Control-b>", self.ban3D)
         self.top.bind("<Control-V>", self.paste)
         self.top.bind("<Control-v>", self.paste)
         self.top.bind("<Control-F>", self.filter)
         self.top.bind("<Control-f>", self.filter)
         self.top.bind("<Control-E>", self.export)
         self.top.bind("<Control-e>", self.export)
-        self.top.bind("<Control-B>", self.beater)
-        self.top.bind("<Control-b>", self.beater)
         self.top.bind("<Control-M>", self.mirrorX)
         self.top.bind("<Control-m>", self.mirrorX)
         self.top.bind("<Control-A>", self.selectAll)
@@ -562,6 +583,10 @@ class TimelineEditor:
         self.top.bind("<Control-Shift-v>", self.pasteBy)
         self.top.bind("<Control-H>", self.hooked.setvalue)
         self.top.bind("<Control-h>", self.hooked.setvalue)
+        self.top.bind("<KeyPress-Tab>", self.onTabPressed)
+        self.top.bind("<KeyRelease-Tab>", self.onTabReleased)
+        self.top.bind("<KeyPress-y>", self.onT_Pressed)
+        self.top.bind("<KeyRelease-y>", self.onT_Released)
 
         self.top.bind("<Control-Q>", lambda args: self.smooth(0))
         self.top.bind("<Control-q>", lambda args: self.smooth(0))
@@ -585,6 +610,253 @@ class TimelineEditor:
 
         self.top.after(200, self.calcHandle)
         self.top.after(300, self.update)
+
+        # ffmpeg 子进程
+        t1 = threading.Thread(target=self.ffmpegThread, daemon=True)
+        t1.start()
+
+    def changeUI(self, *args):
+        self.enableClassicUI = not self.enableClassicUI
+        self.changeScreenMode(ScreenMode.MOVE1)
+        self.calcHandle()
+        self.update()
+
+        if self.enableClassicUI:
+            self.message("欢迎使用RPE经典UI(@cmdysj)喵，此功能是为了减少此制谱器的学习成本喵。")
+        else:
+            self.message("打回原形了喵。")
+
+
+    def addKeyFrame(self, *args):
+        self.record("添加关键帧")
+        if self.screenMode is ScreenMode.SPEED:
+            getEventIndexByTime(self.line.speed, self.ts)
+        elif self.screenMode is ScreenMode.ALPHA:
+            getEventIndexByTime(self.line.alpha, self.ts)
+        elif self.screenMode is ScreenMode.THETA:
+            getEventIndexByTime(self.line.theta, self.ts)
+        elif self.screenMode is ScreenMode.NOTE:
+            pass
+        else:
+            getEventIndexByTime(self.line.move1, self.ts)
+            getEventIndexByTime(self.line.move2, self.ts)
+            getEventIndexByTime(self.line.move3, self.ts)
+            getEventIndexByTime(self.line.rotate, self.ts)
+        self.calcHandle()
+        self.update()
+
+    def changeSpeed(self):
+        if self.playing:
+            return
+        if self.speed == 1.0 and self.audioFile_075x is not None:
+            self.speed = 0.75
+            self.bt2.config(text="0.75x")
+            mixer.music.load(self.audioFile_075x)
+            mixer.music.play()
+            mixer.music.pause()
+        elif self.speed == 0.75 and self.audioFile_075x is not None:
+            self.speed = 0.5
+            self.bt2.config(text="0.5x")
+            mixer.music.load(self.audioFile_05x)
+            mixer.music.play()
+            mixer.music.pause()
+        elif self.speed == 0.5 and self.audioFile_075x is not None:
+            self.speed = 0.25
+            self.bt2.config(text="0.25x")
+            mixer.music.load(self.audioFile_025x)
+            mixer.music.play()
+            mixer.music.pause()
+        elif self.speed == 0.25 and self.audioFile is not None:
+            self.speed = 1.0
+            self.bt2.config(text="1.0x")
+            mixer.music.load(self.audioFile)
+            mixer.music.play()
+            mixer.music.pause()
+        else:
+            self.message("切换倍速失败：ffmpeg异常")
+
+    def ffmpegThread(self):
+        cacheDir = os.path.join(self.projectDir, "cache")
+
+        if not os.path.exists(cacheDir):
+            os.makedirs(cacheDir)
+
+        ffmpeg_exec = "bin/ffmpeg.exe"
+
+        audioFile_05x = os.path.join(cacheDir, "0.5x_"+os.path.basename(self.audioFile))
+        self.audioFile_05x = audioFile_05x
+        if not os.path.exists(audioFile_05x):
+            self.message("ffmpeg在正后台加载音频")
+            command = [ffmpeg_exec,"-i", self.audioFile,"-filter:a", f"atempo={0.5}","-y",audioFile_05x]
+            result = subprocess.run(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            if result.returncode != 0:
+                raise Exception(f"ffmpeg执行失败: {result.stderr}")
+
+        audioFile_075x = os.path.join(cacheDir, "0.75x_"+os.path.basename(self.audioFile))
+        self.audioFile_075x = audioFile_075x
+        if not os.path.exists(audioFile_075x):
+            self.message("ffmpeg在正后台加载音频")
+            command = [ffmpeg_exec,"-i", self.audioFile,"-filter:a", f"atempo={0.75}","-y",audioFile_075x]
+            result = subprocess.run(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            if result.returncode != 0:
+                raise Exception(f"ffmpeg执行失败: {result.stderr}")
+
+        audioFile_025x = os.path.join(cacheDir, "0.25x_"+os.path.basename(self.audioFile))
+        self.audioFile_025x = audioFile_025x
+        if not os.path.exists(audioFile_025x):
+            self.message("ffmpeg在正后台加载音频")
+            command = [ffmpeg_exec,"-i", self.audioFile_05x,"-filter:a", f"atempo={0.5}","-y",audioFile_025x]
+            result = subprocess.run(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            if result.returncode != 0:
+                raise Exception(f"ffmpeg执行失败: {result.stderr}")
+
+        self.message("音频加载就绪")
+
+    def officialChartRefine(self):
+        for line in self.chart.lineList:
+            lineTimers = (line.move1, line.move2, line.rotate, line.alpha)
+            for lineTimer in lineTimers:
+
+                i = 0
+                while i < lineTimer.periodCount - 1:
+                    st = lineTimer.startTimeList[i]
+                    et = lineTimer.endTimeList[i]
+
+                    if lineTimer.endValueList[i] == lineTimer.startValueList[i+1] and et-st<4:
+                        lineTimer.endTimeList[i] = lineTimer.endTimeList[i+1]
+                        lineTimer.endValueList[i] = lineTimer.endValueList[i+1]
+                        lineTimer.popPeriod(i+1)
+                    else:
+                        i += 1
+
+    def loadFromJson(self, *event):
+        file = filedialog.askopenfilename(title="从Json导入", filetypes=(("Json文件", "*.json"), ("所有类型", "*.*")))
+        if not file:
+            return
+
+        try:
+            from libs import analyzer
+            newChart = analyzer.analyzeJson(file)
+            self.chart = newChart
+            self.line = newChart.lineList[0]
+            self.calcHandle()
+            self.update()
+        except Exception as e:
+            messagebox.showerror("错误", "导入时遇到未知的错误：\n"+str(e))
+
+    def onTabPressed(self, event):
+
+        if not self.tabFrame is None:
+            return 'break'
+
+        xn, yn = self.top.winfo_pointerx(), self.top.winfo_pointery()
+        self.tabDragStartPos = (xn, yn)
+        x = self.top.winfo_width() / 2 - 200
+        y = self.top.winfo_height() / 2 - 200
+
+        self.tabFrame = CanvasDark(self.top)
+        self.tabFrame.place(x=x, y=y, width=400, height=400)
+        self.onTabDrag(event)
+
+        self.canvas.unbind("<Motion>")
+        self.screen.unbind("<Motion>")
+        self.top.unbind("<Motion>")
+
+        return 'break'
+
+    def onTabDrag(self, *event):
+
+        if self.tabFrame is None:
+            return 'break'
+        else:
+            self.top.after(20, self.onTabDrag)
+
+        xn, yn = self.top.winfo_pointerx(), self.top.winfo_pointery()
+        dx = xn - self.tabDragStartPos[0]
+        dy = yn - self.tabDragStartPos[1]
+
+        if abs(dy) + abs(dx) == 0:
+            index = self.chart.lineList.index(self.line)
+            a = 0
+        else:
+            r = math.atan2(dy, dx) + math.pi / 2
+            a = math.sqrt(dx**2 + dy**2)
+            index = round(12 * r / (math.pi*2))
+            index = (index + 12) % 12
+            level = max(min(int(a // 400), int((len(self.chart.lineList)+1)//12)-1), 0)
+            index += 12 * level
+            print(index, level)
+
+        self.tabFrame.delete("all")
+        for i in range(int((len(self.chart.lineList)+1)//12)+1):
+            r = 80 + 40*i
+            self.tabFrame.create_oval(
+                200 - r, 200 - r,
+                200 + r, 200 + r,
+                outline="#ddd",
+                width=max(1, 4-i*2)
+            )
+        self.tabFrame.create_text(
+            200, 245, text="快速切线\n移动鼠标",
+            anchor="center",
+            fill="#fff",
+        )
+        for i in range(len(self.chart.lineList)):
+            rL = i/12 * math.pi * 2
+            l = i // 12
+            xL = 200 + math.sin(rL) * (100 + 40 * l)
+            yL = 200 - math.cos(rL) * (100 + 40 * l)
+
+            if index == i and a > 60:
+                self.tabFrame.create_text(
+                    xL, yL, text=str(i),
+                    anchor="center",
+                    font=("microsoft yahei", 20),
+                    fill="#fff",
+                )
+                self.tabFrame.create_text(
+                    200, 190, text=str(i),
+                    anchor="center",
+                    font=("microsoft yahei", 48),
+                    fill="#fff",
+                )
+
+
+                line = self.chart.lineList[index]
+                if line is not self.line:
+                    self.line = line
+                    self.calcHandle()
+                    self.update()
+                    self.message(f"Line {index}.")
+            else:
+                self.tabFrame.create_text(
+                    xL, yL, text=str(i),
+                    anchor="center",
+                    font=("microsoft yahei", 12),
+                    fill="#ddd",
+                )
+
+        if index == self.chart.lineList.index(self.line) or a <= 60:
+            self.tabFrame.create_text(
+                200, 190, text=str(self.chart.lineList.index(self.line)),
+                anchor="center",
+                font=("microsoft yahei", 48),
+                fill="#fff",
+            )
+
+        self.tabFrame.config(cursor="none")
+        self.canvas.config(cursor="none")
+        self.screen.config(cursor="none")
+        self.top.config(cursor="none")
+
+    def onTabReleased(self, event):
+        self.top.config(cursor="arrow")
+        self.canvas.bind("<Motion>", self.onMouseMotion)
+        self.screen.bind("<Motion>", self.onScreenMotion)
+        self.top.unbind("<Motion>")
+        if self.tabFrame is not None:
+            self.tabFrame.destroy()
+            self.tabFrame = None
 
     def setDisplayJudgeArea(self, *args):
         if self.judge.get() is True and self.dt < 32*8 and self.screenMode is ScreenMode.NOTE:
@@ -626,7 +898,7 @@ class TimelineEditor:
 
     def record(self, message=""):
         self.undoRecord = []
-        self.operationRecord.append((self.lineIndex, copy.deepcopy(self.line), message), )
+        self.operationRecord.append((self.chart.lineList.index(self.line), copy.deepcopy(self.line), message), )
         if len(self.operationRecord) > 1000:
             self.operationRecord = [self.operationRecord[i] for i in range(0, 10, 500)] + self.operationRecord[500:]
 
@@ -830,6 +1102,18 @@ class TimelineEditor:
         self.calcHandle()
         self.update()
 
+    def ban3D(self, *args):
+
+        # 撤销记录
+        print("here")
+        self.record("启用/禁用3D")
+
+        for obj in self.selected:
+            if isinstance(obj, Note):
+                obj.ban3D = (obj.ban3D + 1) % 2
+        self.calcHandle()
+        self.update()
+
     def onAltPressed(self, *args):
         if self.altFrame is not None:
             return
@@ -938,13 +1222,26 @@ class TimelineEditor:
         self.handles: list[Handle] = []
         sorted(self.chart)
 
-        self.calcEventHandleToRender(self.line.alpha, minValue=0, maxValue=1, screenMode=ScreenMode.ALPHA)
-        self.calcEventHandleToRender(self.line.move1, minValue=0, maxValue=1, screenMode=ScreenMode.MOVE1)
-        self.calcEventHandleToRender(self.line.move2, minValue=0, maxValue=1, screenMode=ScreenMode.MOVE2)
-        self.calcEventHandleToRender(self.line.speed, minValue=0, maxValue=10, screenMode=ScreenMode.SPEED)
-        self.calcEventHandleToRender(self.line.theta, minValue=-180, maxValue=180, screenMode=ScreenMode.THETA)
-        self.calcEventHandleToRender(self.line.rotate, minValue=-360, maxValue=360, screenMode=ScreenMode.ROTATE)
-        self.calcNoteHandleToRender()
+        if self.enableClassicUI:
+            if self.screenMode is ScreenMode.NOTE:
+                self.calcNoteHandleToRender()
+            else:
+                self.calcEventHandleToRender(self.line.alpha, minValue=0, maxValue=1, screenMode=ScreenMode.ALPHA)
+                self.calcEventHandleToRender(self.line.move1, minValue=0, maxValue=1, screenMode=ScreenMode.MOVE1)
+                self.calcEventHandleToRender(self.line.move2, minValue=0, maxValue=1, screenMode=ScreenMode.MOVE2)
+                self.calcEventHandleToRender(self.line.move3, minValue=-1, maxValue=4, screenMode=ScreenMode.MOVE3)
+                self.calcEventHandleToRender(self.line.speed, minValue=0, maxValue=10, screenMode=ScreenMode.SPEED)
+                self.calcEventHandleToRender(self.line.theta, minValue=-180, maxValue=180, screenMode=ScreenMode.THETA)
+                self.calcEventHandleToRender(self.line.rotate, minValue=-360, maxValue=360, screenMode=ScreenMode.ROTATE)
+        else:
+            self.calcEventHandleToRender(self.line.alpha, minValue=0, maxValue=1, screenMode=ScreenMode.ALPHA)
+            self.calcEventHandleToRender(self.line.move1, minValue=0, maxValue=1, screenMode=ScreenMode.MOVE1)
+            self.calcEventHandleToRender(self.line.move2, minValue=0, maxValue=1, screenMode=ScreenMode.MOVE2)
+            self.calcEventHandleToRender(self.line.move3, minValue=-1, maxValue=4, screenMode=ScreenMode.MOVE3)
+            self.calcEventHandleToRender(self.line.speed, minValue=0, maxValue=10, screenMode=ScreenMode.SPEED)
+            self.calcEventHandleToRender(self.line.theta, minValue=-180, maxValue=180, screenMode=ScreenMode.THETA)
+            self.calcEventHandleToRender(self.line.rotate, minValue=-360, maxValue=360, screenMode=ScreenMode.ROTATE)
+            self.calcNoteHandleToRender()
 
         # 刷新编辑区
         self.renderScreen()
@@ -956,19 +1253,46 @@ class TimelineEditor:
         self.renderFrame()
         self.renderScroller()
         self.renderHandle()
+        self.renderGlobalNotes()
+
+    def renderGlobalNotes(self, *args):
+        for line in self.chart.lineList:
+            if line is self.line:
+                continue
+            for note in line.noteList:
+                if self.t0 <= note.time_ <= self.t0 + self.dt:
+                    if note.type_ == 1 or note.type_ == 3:
+                        color = TAP_COLOR
+                        x = 24
+                    elif note.type_ == 2:
+                        color = DRAG_COLOR
+                        x = 32
+                    elif note.type_ == 4:
+                        color = FLICK_COLOR
+                        x = 40
+                    else:
+                        raise ValueError(f"Unknown note type: {note.type_}")
+
+                    y = self.h0 * (1 - (note.time_ - self.t0) / self.dt)
+                    self.canvas.create_oval(
+                        x-2, y-2,
+                        x+2, y+2,
+                        fill=color,
+                        width=0
+                    )
 
     def calcNoteHandleToRender(self):
         # 记录 note 的 x 值，方便吸附
         self.Xrecord = set()
 
-        if self.displayJudgeArea:
-            for i in range(len(self.chart.lineList)):
-                line = self.chart.lineList[i]
-                if line is not self.line:
-                    for note in line.noteList:
-                        handle = self.calcEachNoteHandleToRender(note, i)
-                        if i is not False:
-                            self.handles.append(handle)
+        # if self.displayJudgeArea:
+        #     for i in range(len(self.chart.lineList)):
+        #         line = self.chart.lineList[i]
+        #         if line is not self.line:
+        #             for note in line.noteList:
+        #                 handle = self.calcEachNoteHandleToRender(note, i)
+        #                 if i is not False:
+        #                     self.handles.append(handle)
 
         for note in self.line.noteList:
             i = self.calcEachNoteHandleToRender(note)
@@ -1044,6 +1368,13 @@ class TimelineEditor:
         )
 
     def renderFrame(self):
+
+        if not self.playing:
+            self.canvas.create_text(
+                self.w0/2, self.h0/2, anchor=CENTER,
+                text=self.chart.lineList.index(self.line),
+                fill="#3b3b3b", font=("microsoft yahei", 256)
+            )
         self.canvas.create_text(
             5, 0, anchor=NW,
             text="时间 Time",
@@ -1065,15 +1396,16 @@ class TimelineEditor:
             fill="#ddd"
         )
 
-        for i in range(1, self.lineXNum):
-            x = (0.1 + i/self.lineXNum) / 1.2 * self.w0
-            self.canvas.create_line(
-                x, 0, x, self.h0,
-                fill="#444"
-            )
+        if not self.enableClassicUI or self.screenMode is ScreenMode.NOTE:
+            for i in range(1, self.lineXNum):
+                x = (0.1 + i/self.lineXNum) / 1.2 * self.w0
+                self.canvas.create_line(
+                    x, 0, x, self.h0,
+                    fill="#444"
+                )
 
         i = 32 / self.lineTNum
-        t = ((self.t0 + i - 1e-9) // i) * i
+        t = ((self.t0 - 1e-9) // i) * i
         while t < self.t0 + self.dt:
             t += i
             y = (1 - (t - self.t0) / self.dt) * self.h0
@@ -1128,10 +1460,10 @@ class TimelineEditor:
 
                 if self.screenMode is ScreenMode.NOTE and handle.lineIndex is None:
                     color = HOLD_COLOR
-                    fill = color if handle.note.above else ""
+                    fill = color if handle.note.above and not handle.note.ban3D else ""
                 else:
                     color = HOLD_COLOR_DARK
-                    fill = color if handle.note.above else ""
+                    fill = color if handle.note.above and not handle.note.ban3D else ""
 
                 self.canvas.create_rectangle(
                     handle.x - NS, handle.y1,
@@ -1177,7 +1509,7 @@ class TimelineEditor:
                         color = FLICK_COLOR_DARK
                     else:
                         raise ValueError(f"Unknown handle type {handle.note.type_}")
-                fill = color if handle.note.above else ""
+                fill = color if handle.note.above and not handle.note.ban3D else ""
 
                 self.canvas.create_rectangle(
                     handle.x - NS, handle.y - handle.width/2,
@@ -1248,7 +1580,10 @@ class TimelineEditor:
             self.canvas.create_line(handle.x, y, handle.x, jw1, fill="#fff")
             self.canvas.create_line(handle.x-10, jw1, handle.x+10, jw1, fill="#fff")
 
-    def renderEventHandle(self, handle: EventHandle):
+    def renderEventHandle(self, handle):
+        return self.renderEventHandle_Classic(handle) if self.enableClassicUI else self.renderEventHandle_Default(handle)
+
+    def renderEventHandle_Default(self, handle: EventHandle):
         if abs(handle.y2 - handle.y1) < 40:
             handleSize = 5
         else:
@@ -1263,6 +1598,8 @@ class TimelineEditor:
                 color = MOVE1_COLOR
             elif handle.type_ is ScreenMode.MOVE2:
                 color = MOVE2_COLOR
+            elif handle.type_ is ScreenMode.MOVE3:
+                color = MOVE3_COLOR
             elif handle.type_ is ScreenMode.THETA:
                 color = THETA_COLOR
             elif handle.type_ is ScreenMode.ROTATE:
@@ -1278,6 +1615,8 @@ class TimelineEditor:
                 color = MOVE1_COLOR_DARK
             elif handle.type_ is ScreenMode.MOVE2:
                 color = MOVE2_COLOR_DARK
+            elif handle.type_ is ScreenMode.MOVE3:
+                color = MOVE3_COLOR_DARK
             elif handle.type_ is ScreenMode.THETA:
                 color = THETA_COLOR_DARK
             elif handle.type_ is ScreenMode.ROTATE:
@@ -1411,6 +1750,76 @@ class TimelineEditor:
             width=1,
         )
 
+    def renderEventHandle_Classic(self, handle: EventHandle):
+        if handle.type_ is ScreenMode.SPEED:
+            index = 6
+            color = SPEED_COLOR
+            colorDark = SPEED_COLOR_DARK
+        elif handle.type_ is ScreenMode.ALPHA:
+            index = 5
+            color = ALPHA_COLOR
+            colorDark = ALPHA_COLOR_DARK
+        elif handle.type_ is ScreenMode.MOVE1:
+            index = 0
+            color = MOVE1_COLOR
+            colorDark = MOVE1_COLOR_DARK
+        elif handle.type_ is ScreenMode.MOVE2:
+            index = 1
+            color = MOVE2_COLOR
+            colorDark = MOVE2_COLOR_DARK
+        elif handle.type_ is ScreenMode.MOVE3:
+            index = 2
+            color = MOVE3_COLOR
+            colorDark = MOVE3_COLOR_DARK
+        elif handle.type_ is ScreenMode.THETA:
+            index = 3
+            color = THETA_COLOR
+            colorDark = THETA_COLOR_DARK
+        elif handle.type_ is ScreenMode.ROTATE:
+            index = 4
+            color = ROTATE_COLOR
+            colorDark = ROTATE_COLOR_DARK
+        else:
+            raise ValueError(f"Unknown handle type {handle.type_}")
+
+        l = self.w0*((index+0.7)/8)
+        r = self.w0*((index+1.3)/8)
+        self.canvas.create_rectangle(
+            l, handle.y1,
+            r, handle.y2,
+            fill=colorDark,
+            width=0
+        )
+        self.canvas.create_line(
+            l, handle.y1,
+            r, handle.y1,
+            fill=color,
+        )
+        self.canvas.create_line(
+            l+(r-l)*handle.x1/self.w0, handle.y1,
+            l+(r-l)*handle.x2/self.w0, handle.y2,
+            fill=color, width=3
+        )
+
+        if any(isinstance(obj, Event) and obj.isHandle(handle) for obj in self.selected):
+            self.canvas.create_rectangle(
+                l+3, handle.y1-3,
+                r-3, handle.y2+3,
+                outline="white",
+                width=6
+            )
+        if abs(handle.y2 - handle.y1) > 50:
+            self.canvas.create_text(
+                (l+r)/2, min(handle.y1, self.h0)-10,
+                text=f"{Event(handle).sv: .2f}",
+                fill="white"
+            )
+            self.canvas.create_text(
+                (l+r)/2, max(handle.y2, 0)+10,
+                text=f"{Event(handle).ev: .2f}",
+                fill="white"
+            )
+
     def renderScreen(self):
         self.screen.delete("all")
 
@@ -1460,7 +1869,7 @@ class TimelineEditor:
         self.screen.create_rectangle(
             *self.posToScreen(0, 0),
             *self.posToScreen(1, 1),
-            outline="#ddd", width=1
+            fill="#333", width=0
         )
 
         # 渲染主线
@@ -1500,6 +1909,11 @@ class TimelineEditor:
         y2 = yn - Vsin * halfLength
         xR = xn + math.cos((r + 90) / 180 * math.pi) * 50
         yR = yn - math.sin((r + 90) / 180 * math.pi) * 50
+
+        # 渲染note
+        if self.screenMode is ScreenMode.NOTE:
+            line.fastCalcFloorPos()
+            self.renderEachNoteOnLine(line, xn, yn, r)
 
         # yn, yR = sh - yn, sh - yR
         # y1, y2 = sh - y1, sh - y2
@@ -1608,8 +2022,101 @@ class TimelineEditor:
                     width=1,
                 )
 
+    def renderEachNoteOnLine(self, line, x, y, r):
+
+        X = 0.05626 * self.sw1
+        Y = 0.6 * self.sh1
+        NS = self.sw1 / 8
+
+        Vsin = math.sin(math.radians(-r))
+        Vcos = math.cos(math.radians(-r))
+        pos = line.pos(self.ts)
+        pos = 0 if pos is None else pos
+
+        for note in line.noteList:
+
+            if self.ts > note.time_ + note.holdTime:
+                continue
+
+            dx1 = note.posX * X + NS/2
+            dx2 = note.posX * X - NS/2
+            dy = note.speed * (note.floorPos - pos) * Y
+
+            if note.above:
+                x1 = x + dx1 * Vcos + dy * Vsin
+                y1 = y + dx1 * Vsin - dy * Vcos
+                x2 = x + dx2 * Vcos + dy * Vsin
+                y2 = y + dx2 * Vsin - dy * Vcos
+            else:
+                x1 = x + dx1 * Vcos - dy * Vsin
+                y1 = y + dx1 * Vsin + dy * Vcos
+                x2 = x + dx2 * Vcos - dy * Vsin
+                y2 = y + dx2 * Vsin + dy * Vcos
+
+            if note.type_ == 3:
+
+                dyt = note.speed * (note.floorPosT - pos) * Y
+
+                if note.above:
+                    if note.time_ < self.ts < note.time_ + note.holdTime:
+                        x1 = x + dx1 * Vcos
+                        y1 = y + dx1 * Vsin
+                        x2 = x + dx2 * Vcos
+                        y2 = y + dx2 * Vsin
+                    x3 = x + dx1 * Vcos + dyt * Vsin
+                    y3 = y + dx1 * Vsin - dyt * Vcos
+                    x4 = x + dx2 * Vcos + dyt * Vsin
+                    y4 = y + dx2 * Vsin - dyt * Vcos
+                else:
+                    if note.time_ < self.ts < note.time_ + note.holdTime:
+                        x1 = x + dx1 * Vcos
+                        y1 = y + dx1 * Vsin
+                        x2 = x + dx2 * Vcos
+                        y2 = y + dx2 * Vsin
+                    x3 = x + dx1 * Vcos - dyt * Vsin
+                    y3 = y + dx1 * Vsin + dyt * Vcos
+                    x4 = x + dx2 * Vcos - dyt * Vsin
+                    y4 = y + dx2 * Vsin + dyt * Vcos
+
+                if not (0 < x1 < self.sw0 and 0 < y1 < self.sh0) and not (0 < x2 < self.sw0 and 0 < y2 < self.sh0)\
+                        and not (0 < x3 < self.sw0 and 0 < y3 < self.sh0) and not (0 < x4 < self.sw0 and 0 < y4 < self.sh0):
+                    continue
+
+                self.screen.create_polygon(
+                    x1, y1, x2, y2, x4, y4, x3, y3,
+                    fill=HOLD_COLOR,
+                    width=2,
+                )
+
+            else:
+
+                if not (0 < x1 < self.sw0 and 0 < y1 < self.sh0) and not (0 < x2 < self.sw0 and 0 < y2 < self.sh0):
+                    continue
+
+                if note.type_ == 1:
+                    self.screen.create_line(
+                        x1, y1, x2, y2,
+                        fill=TAP_COLOR,
+                        width=3,
+                    )
+                elif note.type_ == 2:
+                    self.screen.create_line(
+                        x1, y1, x2, y2,
+                        fill=DRAG_COLOR,
+                        width=2,
+                    )
+                elif note.type_ == 4:
+                    self.screen.create_line(
+                        x1, y1, x2, y2,
+                        fill=FLICK_COLOR,
+                        width=4,
+                    )
+                else:
+                    raise ValueError(f"Unexpected note type: {note.type_}")
+
     def renderScroller(self):
         y0 = self.h0 * (1 - (self.t0 / self.t1))
+        ys = self.h0 * (1 - (self.ts / self.t1))
         y1 = self.h0 * (1 - ((self.t0 + self.dt) / self.t1))
         self.scroller.delete("all")
         self.scroller.create_rectangle(
@@ -1618,10 +2125,15 @@ class TimelineEditor:
             width=0
         )
         self.scroller.create_line(
-            0, y0, 20, y0,
+            0, ys, 20, ys,
             fill="#ddd",
-            width=3,
+            width=2,
         )
+        # self.scroller.create_line(
+        #     0, y0, 20, y0,
+        #     fill="#ddd",
+        #     width=3,
+        # )
 
     def renderSelectingRect(self):
         if self.mouseOperationType == "selectingNote":
@@ -1640,6 +2152,9 @@ class TimelineEditor:
             )
 
     def mouseMatch(self, event):
+        return self.mouseMatch_Classic(event) if self.enableClassicUI else self.mouseMatch_Default(event)
+
+    def mouseMatch_Default(self, event):
 
         minDistance: float = 20
         matchedObj: Handle | None = None
@@ -1657,7 +2172,7 @@ class TimelineEditor:
                 if self.screenMode is ScreenMode.NOTE:
                     d -= 5
             if isinstance(handle, EventHandle):
-                if not handle.y2 < event.y < handle.y1:
+                if not handle.y2 <= event.y <= handle.y1:
                     d = float('inf')
                 else:
                     xp = (event.y - handle.y1) / (handle.y2 - handle.y1) * (handle.x2 - handle.x1) + handle.x1
@@ -1666,6 +2181,51 @@ class TimelineEditor:
                 minDistance = d
                 matchedObj = handle
         return matchedObj
+
+    def mouseMatch_Classic(self, event):
+        minDistance: float = 20
+        matchedObj: Handle | None = None
+        NS = 0.05 * self.w0
+
+        if self.screenMode is ScreenMode.NOTE:
+            for handle in self.handles:
+                if isinstance(handle, NoteHandle):
+                    d = math.sqrt((event.x - handle.x) ** 2 + (event.y - handle.y) ** 2)
+                    d -= 5 if self.screenMode is ScreenMode.NOTE else 0
+                if isinstance(handle, HoldHandle):
+                    if abs(handle.x - event.x) < NS and handle.y2 < event.y < handle.y1:
+                        d = 0
+                    else:
+                        d = float('inf')
+                    if self.screenMode is ScreenMode.NOTE:
+                        d -= 5
+                if d < minDistance:
+                    minDistance = d
+                    matchedObj = handle
+            if matchedObj is not None:
+                return matchedObj
+
+        lineTimerDic = {
+            0: self.line.move1,
+            1: self.line.move2,
+            2: self.line.move3,
+            3: self.line.theta,
+            4: self.line.rotate,
+            5: self.line.alpha,
+            6: self.line.speed,
+        }
+        index: int = round(8*event.x/self.w0 - 1)
+        if index > 6 or index < 0:
+            return None
+
+        lineTimer: LineTimer = lineTimerDic[index]
+        for handle in self.handles:
+            if not isinstance(handle, EventHandle):
+                continue
+            if lineTimer is handle.lineTimer:
+                if handle.y2 <= event.y <= handle.y1:
+                    return handle
+        return None
 
     def mouseCast(self, event):
         # 将鼠标位置转换为时间和位置数据
@@ -1713,6 +2273,8 @@ class TimelineEditor:
                 value = 0 + r * (1 - 0)
             elif self.screenMode is ScreenMode.MOVE2:
                 value = 0 + r * (1 - 0)
+            elif self.screenMode is ScreenMode.MOVE3:
+                value = -1 + r * (4 + 1)
             elif self.screenMode is ScreenMode.SPEED:
                 value = 0 + r * (10 - 0)
             elif self.screenMode is ScreenMode.THETA:
@@ -1820,10 +2382,10 @@ class TimelineEditor:
                 if self.hooked.get():
                     self.mouseStartCast = self.mouseCast(event)
                     self.mouseOperationType = 'pullEvent'
-                elif matched.x1 - 10 < event.x < matched.x1 + 10 and matched.y1 - 10 < event.y < matched.y1 + 10:
+                elif matched.y1 - 10 < event.y < matched.y1 + 10:
                     self.mouseStartCast = self.mouseCast(event)
                     self.mouseOperationType = 'pullEvent2'
-                elif matched.x2 - 10 < event.x < matched.x2 + 10 and matched.y2 - 10 < event.y < matched.y2 + 10:
+                elif matched.y2 - 10 < event.y < matched.y2 + 10:
                     self.mouseStartCast = self.mouseCast(event)
                     self.mouseOperationType = 'pullEvent8'
                 else:
@@ -1970,6 +2532,8 @@ class TimelineEditor:
 
         self.screenMode = screenMode
         self.selected = []
+        self.renderScreen()
+        self.calcHandle() if self.enableClassicUI else None
         self.update()
 
         if screenMode is ScreenMode.NOTE:
@@ -1978,14 +2542,16 @@ class TimelineEditor:
             self.tf0rb2.set(1)
         elif screenMode is ScreenMode.MOVE2:
             self.tf0rb2.set(2)
-        elif screenMode is ScreenMode.ALPHA:
+        elif screenMode is ScreenMode.MOVE3:
             self.tf0rb2.set(3)
-        elif screenMode is ScreenMode.ROTATE:
+        elif screenMode is ScreenMode.ALPHA:
             self.tf0rb2.set(4)
-        elif screenMode is ScreenMode.SPEED:
+        elif screenMode is ScreenMode.ROTATE:
             self.tf0rb2.set(5)
-        elif screenMode is ScreenMode.THETA:
+        elif screenMode is ScreenMode.SPEED:
             self.tf0rb2.set(6)
+        elif screenMode is ScreenMode.THETA:
+            self.tf0rb2.set(7)
 
     def changeScreenModeByToolBox(self, index):
         if index == 0:
@@ -1995,16 +2561,22 @@ class TimelineEditor:
         elif index == 2:
             self.screenMode = ScreenMode.MOVE2
         elif index == 3:
-            self.screenMode = ScreenMode.ALPHA
+            self.screenMode = ScreenMode.MOVE3
         elif index == 4:
-            self.screenMode = ScreenMode.ROTATE
+            self.screenMode = ScreenMode.ALPHA
         elif index == 5:
-            self.screenMode = ScreenMode.SPEED
+            self.screenMode = ScreenMode.ROTATE
         elif index == 6:
+            self.screenMode = ScreenMode.SPEED
+        elif index == 7:
             self.screenMode = ScreenMode.THETA
 
         self.selected = []
+        self.renderScreen()
+        self.calcHandle() if self.enableClassicUI else None
         self.update()
+        
+
 
     def onRightButtonPressed(self, event):
 
@@ -2058,6 +2630,8 @@ class TimelineEditor:
                 lineTimer: LineTimer = self.line.move1
             elif self.screenMode is ScreenMode.MOVE2:
                 lineTimer: LineTimer = self.line.move2
+            elif self.screenMode is ScreenMode.MOVE3:
+                lineTimer: LineTimer = self.line.move3
             elif self.screenMode is ScreenMode.SPEED:
                 lineTimer: LineTimer = self.line.speed
             elif self.screenMode is ScreenMode.THETA:
@@ -2116,6 +2690,12 @@ class TimelineEditor:
             self.tf0rb2.set(4)
         elif str.upper(event.char) == "S":
             self.tf0rb2.set(5)
+        elif str.upper(event.char) == "M":
+            self.star_mixer()
+        elif str.upper(event.char) == "B":
+            self.beater()
+        elif str.upper(event.char) == "G":
+            self.hooked.setvalue()
 
         if self.acr2T is not None:
             if event.char == "1":
@@ -2342,7 +2922,7 @@ class TimelineEditor:
     def onMouseMotion(self, event):
 
         cast = self.mouseCast(event)
-        self.lf0et1.config(text=f"{self.t0} ({timeTtoBeat(self.t0)})")
+        self.lf0et1.config(text=f"{int(self.ts)} ({timeTtoBeat(int(self.ts))})")
         self.lf0et2.config(text=f"{cast[1]} ({timeTtoBeat(cast[1])})")
         self.lf0et3.config(text=f"{cast[0]}")
 
@@ -2366,6 +2946,9 @@ class TimelineEditor:
                 elif self.screenMode is ScreenMode.MOVE2:
                     minValue, maxValue = 0, 1
                     lineTimer: LineTimer = self.line.move2
+                elif self.screenMode is ScreenMode.MOVE3:
+                    minValue, maxValue = -1, 4
+                    lineTimer: LineTimer = self.line.move3
                 elif self.screenMode is ScreenMode.SPEED:
                     minValue, maxValue = 0, 10
                     lineTimer: LineTimer = self.line.speed
@@ -2427,9 +3010,9 @@ class TimelineEditor:
                     self.canvas.config(cursor="sb_v_double_arrow")
             else:
                 assert isinstance(matched, EventHandle)
-                if matched.x1 - 10 < event.x < matched.x1 + 10 and matched.y1 - 10 < event.y < matched.y1 + 10:
+                if matched.y1 - 10 < event.y < matched.y1 + 10:
                     self.canvas.config(cursor="sb_h_double_arrow")
-                elif matched.x2 - 10 < event.x < matched.x2 + 10 and matched.y2 - 10 < event.y < matched.y2 + 10:
+                elif matched.y2 - 10 < event.y < matched.y2 + 10:
                     self.canvas.config(cursor="sb_h_double_arrow")
                 else:
                     self.canvas.config(cursor="fleur")
@@ -2511,39 +3094,57 @@ class TimelineEditor:
         self.playing = not self.playing
 
         if self.playing:
-            self.playStartTime = self.ts
+
+            if not mixer.get_busy():
+                mixer.music.play()
             self.lastFrameTime = time.time()
             # 校准到整秒
-            second = int(self.ts / self.chart.bpm * 1.875)
-            self.ts = second * self.chart.bpm / 1.875
-            self.loop()
+            second = int(self.ts / self.speed / self.chart.bpm * 1.875)
+            self.ts = second * self.speed * self.chart.bpm / 1.875
 
-        if self.playing:
-            mixer.music.unpause()
             mixer.music.set_pos(second)
+            mixer.music.unpause()
+            self.loop()
         else:
             mixer.music.pause()
+            self.calcHandle()
+            self.update()
 
+    def onT_Pressed(self, event):
+        if self.playing:
+            return
+        else:
+            self.playing = True
+        if not mixer.get_busy():
+            mixer.music.play()
 
+        self.playStartTime = self.ts
+        self.lastFrameTime = time.time()
+        # 校准到整秒
+        second = int(self.ts / self.speed / self.chart.bpm * 1.875)
+        self.ts = second * self.speed * self.chart.bpm / 1.875
+        mixer.music.set_pos(second)
+        mixer.music.unpause()
+        self.loop()
+
+    def onT_Released(self, event):
+        mixer.music.pause()
+        self.playing = False
+        self.set_to(self.playStartTime - 64)
+        self.ts = self.playStartTime
+        self.calcHandle()
+        self.update()
 
     def loop(self):
+
 
         ct = time.time()
         dt = ct - self.lastFrameTime
         self.lastFrameTime = ct
 
-        if self.playing:
-            self.top.after(int(dt * 1000), self.loop)
-        else:
-            self.set_to(self.playStartTime - 64)
-            self.ts = self.playStartTime
-            self.calcHandle()
-            self.update()
-            return
-
         for line in self.chart.lineList:
             for note in line.noteList:
-                if self.ts <= note.time_ < self.ts + dt / 1.875 * self.line.bpm:
+                if self.ts <= note.time_ < self.ts + dt / 1.875 * self.line.bpm * self.speed:
                     if note.type_ == 1 or note.type_ == 3:
                         self.tapSound.play()
                     elif note.type_ == 2:
@@ -2551,16 +3152,20 @@ class TimelineEditor:
                     elif note.type_ == 4:
                         self.flickSound.play()
 
-        self.ts += dt / 1.875 * self.line.bpm
+        self.ts += dt / 1.875 * self.line.bpm * self.speed
         self.t0 = max(self.t0, self.ts - 64)
-
-        self.lf0et1.config(text=f"{round(self.t0)} ({timeTtoBeat(self.t0)})")
-
+        self.lf0et1.config(text=f"{int(self.ts)} ({timeTtoBeat(int(self.ts))})")
         self.calcHandle()
         self.update()
+        self.top.update()
 
-    def launchPlayer(self, *args):
-        p = mp.Process(target=PlayerProcess, args=(self.chart, self.audioFile, self.illuFile, self.ts))
+        if self.playing:
+            self.top.after(1, self.loop)
+        else:
+            return
+
+    def launchPlayer(self, *args, enable3D=False):
+        p = mp.Process(target=PlayerProcess, args=(self.chart, self.audioFile, self.illuFile, self.ts, enable3D))
         p.start()
 
     def save(self, *args):
@@ -2803,8 +3408,6 @@ Illustrator: {self.chart.illustration}"""
             if self.hooked.get():
                 self.line.move2.startValueList[index] = move2
 
-
-
             self.ts -= 0.1
             self.changeScreenMode(ScreenMode.MOVE1)
             self.calcHandle()
@@ -2904,6 +3507,7 @@ Illustrator: {self.chart.illustration}"""
                 et8.insert(0, note.isFake)
                 et9.insert(0, note.size)
                 et10.insert(0, note.visibleTime)
+                et11.insert(0, note.ban3D)
 
         def submitNoteAttribute(*event):
             self.record("编辑键的属性")
@@ -2937,6 +3541,9 @@ Illustrator: {self.chart.illustration}"""
             if et10.get() != "":
                 for note in self.selected:
                     note.visibleTime = float(et10.get())
+            if et11.get() != "":
+                for note in self.selected:
+                    note.ban3D = round(float(et11.get()))
 
             self.calcHandle()
             self.update()
@@ -2948,6 +3555,8 @@ Illustrator: {self.chart.illustration}"""
         lf1.pack(side=TOP, fill=X)
         lf2 = LabelFrameDark(noteWin, text="RPE属性", padx=10, pady=10)
         lf2.pack(side=TOP, fill=X, pady=10)
+        lf3 = LabelFrameDark(noteWin, text="PhiChart属性", padx=10, pady=10, width=360)
+        lf3.pack(side=TOP, fill=X)
 
         lb1 = LabelDark(lf1, anchor=W, text="类型 type")
         lb1.pack(side=TOP, fill=X)
@@ -2998,6 +3607,11 @@ Illustrator: {self.chart.illustration}"""
         lb10.pack(side=TOP, fill=X)
         et10 = EntryDark(lf2)
         et10.pack(side=TOP, fill=X)
+
+        lb11 = LabelDark(lf3, anchor=W, text="禁用3D ban3D")
+        lb11.pack(side=TOP, fill=X)
+        et11 = EntryDark(lf3)
+        et11.pack(side=TOP, fill=X)
 
         bt2 = ButtonDark(noteWin, text="确认", command=submitNoteAttribute, height=2)
         bt2.pack(side=BOTTOM, fill=X)
@@ -3409,6 +4023,8 @@ Illustrator: {self.chart.illustration}"""
                     lineTimer = self.line.move1
                 elif self.screenMode is ScreenMode.MOVE2:
                     lineTimer = self.line.move2
+                elif self.screenMode is ScreenMode.MOVE3:
+                    lineTimer = self.line.move3
                 elif self.screenMode is ScreenMode.THETA:
                     lineTimer = self.line.theta
                 elif self.screenMode is ScreenMode.SPEED:
@@ -3519,12 +4135,12 @@ Illustrator: {self.chart.illustration}"""
 
 
 if __name__ == '__main__':
-    from analyzer import analyzeJson
-    from autoMatch import TomlMatcher, Matcher
+    from libs.analyzer import analyzeJson
+    from libs.autoMatch import Matcher
 
-    matcher = Matcher("charts/atrr in")
-    chart = newDefaultChart(174, 24)
-    chart = analyzeJson(matcher.chartFile)
-    editor = TimelineEditor(chart, matcher.audioFile, matcher.illuFile, "tk/projects/atrr/")
+    matcher = Matcher("charts/白复生 AT")
+    # chart = newDefaultChart(174, 24)
+    chart = analyzeJson(r"D:\Projects\PygamePhiChart\charts\白复生 AT\Chart_AT #3649.json")
+    editor = TimelineEditor(chart, matcher.audioFile, matcher.illuFile, "tk/projects/白复生AT/")
 
     mainloop()

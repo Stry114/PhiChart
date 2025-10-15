@@ -43,7 +43,7 @@ class TomlMatcher:
             elif file.endswith(".png"):
                 self.illuFile = os.path.join(dir, file)
             elif file.endswith(".jpg"):
-                self.chartFile = os.path.join(dir, file)
+                self.illuFile = os.path.join(dir, file)
             elif file.endswith("PCdata.toml"):
                 self.chartFile = os.path.join(dir, file)
             elif not "." in file:

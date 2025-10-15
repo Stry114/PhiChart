@@ -11,11 +11,17 @@ class LineTimer:
         self.startValueList: list[float] = []
         self.defaultValue = defaultValue
 
+    def __call__(self, time_: float):
+        return self.value_2(time_)
+
+    @property
+    def periodCount(self):
+        return len(self.endTimeList)
+
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls(self.bpm, self.defaultValue)
         memo[id(self)] = result
-        result.peroidCount = copy.deepcopy(self.peroidCount, memo)
         result.endTimeList = copy.deepcopy(self.endTimeList, memo)
         result.endValueList = copy.deepcopy(self.endValueList, memo)
         result.startTimeList = copy.deepcopy(self.startTimeList, memo)
@@ -29,10 +35,16 @@ class LineTimer:
             return time_ / baseBPM * 1.875
 
     def latestTimeT(self):
-        return self.endTimeList[-1]
+        if len(self.endTimeList) > 0:
+            return self.endTimeList[-1]
+        else:
+            return 0
 
     def latestValue(self):
-        return self.endValueList[-1]
+        if len(self.endValueList) > 0:
+            return self.endValueList[-1]
+        else:
+            return self.defaultValue
 
     def addPeriod(self, startTime, endTime, startValue, endValue):
         if startTime > endTime:
@@ -41,15 +53,19 @@ class LineTimer:
         self.endValueList.append(endValue)
         self.startTimeList.append(startTime)
         self.startValueList.append(startValue)
-        self.peroidCount += 1
         return self
+
+    def addEvent(self, endTime, endValue):
+        self.endTimeList.append(endTime)
+        self.endValueList.append(endValue)
+        self.startTimeList.append(self.latestTimeT())
+        self.startValueList.append(self.latestValue())
 
     def popPeriod(self, index: int):
         self.endTimeList.pop(index)
         self.endValueList.pop(index)
         self.startTimeList.pop(index)
         self.startValueList.pop(index)
-        self.peroidCount -= 1
 
     def max(self):
         m1 = max(self.startValueList)
@@ -73,7 +89,47 @@ class LineTimer:
             return (b - a) * d + a
         raise IndexError("Time index out of defineded range of timer.")
 
-    def __call__(self, time_):
+    def value_2(self, time: float) -> float:
+        """根据时间获取值：区间内线性插值，区间外按规则返回"""
+        if not self.startTimeList:
+            return self.defaultValue  # 无区间时返回默认值
+
+        # 二分查找时间所在区间
+        left, right = 0, len(self.startTimeList) - 1
+        found_index = -1
+
+        while left <= right:
+            mid = (left + right) // 2
+            # 检查是否在当前区间内
+            if self.startTimeList[mid] <= time <= self.endTimeList[mid]:
+                found_index = mid
+                break
+            # 时间在当前区间之前，搜索左半部分
+            elif time < self.startTimeList[mid]:
+                right = mid - 1
+            # 时间在当前区间之后，搜索右半部分
+            else:
+                left = mid + 1
+
+        if found_index != -1:
+            # 区间内线性插值
+            start_t = self.startTimeList[found_index]
+            end_t = self.endTimeList[found_index]
+            start_v = self.startValueList[found_index]
+            end_v = self.endValueList[found_index]
+
+            if start_t == end_t:
+                return start_v  # 处理零长度区间
+            ratio = (time - start_t) / (end_t - start_t)
+            return start_v + ratio * (end_v - start_v)
+        else:
+            # 区间外处理：第一个区间前返回默认值，其他返回上一个区间的末值
+            if left == 0:
+                return self.defaultValue  # 在第一个区间之前
+            else:
+                return self.endValueList[left - 1]  # 在区间之间或最后一个区间之后
+
+    def value_1(self, time_):
 
         if len(self.endTimeList) == 0:
             return self.defaultValue
@@ -109,7 +165,6 @@ class ColorLineTimer(LineTimer):
     def __init__(self, bpm, defaultValue: list[int] = None):
         defaultValue = defaultValue if defaultValue is not None else [254, 255, 169]
         self.bpm = bpm
-        self.peroidCount = 0
         self.endTimeList = []
         self.endValueList = []
         self.startTimeList = []
@@ -124,8 +179,11 @@ class ColorLineTimer(LineTimer):
         self.endValueList.append(endValue)
         self.startTimeList.append(startTime)
         self.startValueList.append(startValue)
-        self.peroidCount += 1
         return self
+
+    @property
+    def peroidCount(self):
+        return len(self.endTimeList)
 
     def __call__(self, time_):
 
@@ -140,7 +198,7 @@ class ColorLineTimer(LineTimer):
         while left <= right:
             mid = (left + right) // 2
             start, end = self.startTimeList[mid], self.endTimeList[mid]
-            if start <= time_ <= end:  # 检查 target 是否在当前中间区间内
+            if start <= time_ < end:  # 检查 target 是否在当前中间区间内
                 d = (time_ - start) / (end - start)
                 v1 = self.startValueList[mid]
                 v2 = self.endValueList[mid]
@@ -148,21 +206,22 @@ class ColorLineTimer(LineTimer):
                 g = (v2[1] - v1[1]) * d + v1[1]
                 b = (v2[2] - v1[2]) * d + v1[2]
                 return [r, g, b]
+            elif time_ == end:
+                return self.endValueList[mid]
             elif time_ < start:  # target 小于当前区间起始，更新右边界
                 right = mid - 1
             else:  # target 大于当前区间结束，更新左边界
                 left = mid + 1
-        raise IndexError("Time index out of defineded range of timer.")
+        return self.defaultValue
 
-
-class SpeedEvent:
-    def __init__(self, bpm):
-        self.bpm = bpm
-        self.peroidCount = 0
-
-        self.ValueList = []
-        self.endTimeList = []
-        self.startTimeList = []
+# class SpeedEvent:
+#     def __init__(self, bpm):
+#         self.bpm = bpm
+#         self.peroidCount = 0
+#
+#         self.ValueList = []
+#         self.endTimeList = []
+#         self.startTimeList = []
 
 
 class Note:
@@ -184,6 +243,9 @@ class Note:
         self.visibleTime = 999999.0
         # 是否假键
         self.isFake = False
+        # 是否启用3D
+        # 0 跟随播放器 1 强制禁用
+        self.ban3D = 0
 
         self.hit = False
         self.begin = False
@@ -275,7 +337,11 @@ class Line:
         self.rotate = LineTimer(bpm, 0.0)
 
         # 3D事件
+        # 下落面仰角
         self.theta = LineTimer(bpm, 0.0)
+        # z轴事件
+        self.move3 = LineTimer(bpm, 0.0)
+        # 线高度角
         self.noteList: list[Note] = []
 
         # RPE 扩展线条属性
@@ -283,6 +349,7 @@ class Line:
         self.scaleY = LineTimer(bpm, 1.0)
         self.color = ColorLineTimer(bpm)
         self.texture = "line.png"
+        self.attachUI = None
 
         # 运行时变量
         self.cmrH: float = 1.0
@@ -320,7 +387,7 @@ class Line:
 
     def pos(self, time_):
         pos = 0
-        for i in range(self.speed.peroidCount):
+        for i in range(len(self.speed.startTimeList)):
             s = self.speed.startTimeList[i]
             e = self.speed.endTimeList[i]
             if not s <= time_ < e and i != len(self.speed.startTimeList) - 1:
@@ -416,7 +483,6 @@ class Line:
                     if note.type_ == 3:
                         note.floorPosT = note.floorPos + note.holdTime * s * 1.875 / self.bpm
                     j += 1
-
 
     def timeTtoBeat(self, timeT) -> list[int]:
         if timeT % 32 == 0:
@@ -690,7 +756,70 @@ class Line:
 
 
 class RPELine(Line):
-    pass
+    def __init__(self, bpm):
+        self.bpm = bpm
+        # 线高度角
+        self.noteList: list[Note] = []
+        # RPE 扩展线条属性
+        self.texture = "line.png"
+        # 运行时变量
+        self.cmrH: float = 1.0
+        # 事件层
+        self.eventLayers: list[EventLayer] = []
+        # 非事件层的事件
+        self.color = ColorLineTimer(bpm)
+        self.move3 = LineTimer(bpm, 0.0)
+        self.theta = LineTimer(bpm, 0.0)
+        self.scaleX = LineTimer(bpm, 1.0)
+        self.scaleY = LineTimer(bpm, 1.0)
+        # 附着到UI上
+        self.attachUI = None
+
+        # pos函数优化缓存
+        self.lastTime: float = 0.0
+        self.lastPos: float = 0.0
+
+    def move1(self, timeT: float) -> float:
+        return sum([layer.move1(timeT) - 0.5 for layer in self.eventLayers]) + 0.5
+
+    def move2(self, timeT: float) -> float:
+        return sum([layer.move2(timeT) - 0.5 for layer in self.eventLayers]) + 0.5
+
+    def speed(self, timeT: float) -> float:
+        return sum([layer.speed(timeT) for layer in self.eventLayers])
+
+    def alpha(self, timeT: float) -> float:
+        return sum([layer.alpha(timeT) for layer in self.eventLayers])
+
+    def rotate(self, timeT: float) -> float:
+        return sum([layer.rotate(timeT) for layer in self.eventLayers])
+
+    def pos(self, timeT: float) -> float:
+        if timeT > self.lastTime:
+            pos = self.lastPos
+            t = self.lastTime
+        else:
+            pos = 0
+            t = 0
+        while t < timeT:
+            t += 1
+            if t < timeT:
+                pos += self.speed(t) * 1.875 / self.bpm
+                self.lastPos = pos
+                self.lastTime = t
+            else:
+                return pos + (timeT%1) * self.speed(t) * 1.875 / self.bpm
+
+
+class EventLayer:
+    def __init__(self, bpm):
+        self.bpm = bpm
+        self.move1 = LineTimer(bpm, 0.5)
+        self.move2 = LineTimer(bpm, 0.5)
+        self.speed = LineTimer(bpm, 1.0)
+        self.alpha = LineTimer(bpm, 0.0)
+        self.rotate = LineTimer(bpm, 0.0)
+
 
 class Chart:
     def __init__(self, RPE_Chart=False):
@@ -715,6 +844,8 @@ class Chart:
 
         # 打点器打的点
         self.beats = []
+        # 铺面延迟
+        self.offset = 0.0
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -843,6 +974,7 @@ def newDefaultChart(bpm, numOfLine=24) -> Chart:
         line = Line(bpm)
         line.move1.addPeriod(0, 64, 0.5, 0.5)
         line.move2.addPeriod(0, 64, 0.3, 0.3)
+        line.move3.addPeriod(0, 64, 0.0, 0.0)
         line.alpha.addPeriod(0, 64, 0.0, 0.0)
         line.speed.addPeriod(0, 64, 1.0, 1.0)
         line.theta.addPeriod(0, 64, 0.0, 0.0)
@@ -875,7 +1007,7 @@ def getEventIndexByTime(lineTimer: LineTimer, t: int):
         st = lineTimer.endTimeList[i]
         sv = lineTimer.endValueList[i]
         lineTimer.startValueList.insert(i+1, sv)
-        lineTimer.endValueList.insert(i+1, 0)
+        lineTimer.endValueList.insert(i+1, lineTimer.endValueList[i])
         lineTimer.startTimeList.insert(i+1, st)
         lineTimer.endTimeList.insert(i+1, t)
         return i+1
@@ -888,6 +1020,7 @@ def getEventIndexByTime(lineTimer: LineTimer, t: int):
         lineTimer.startTimeList.insert(i+1, t)
         lineTimer.endTimeList.insert(i+1, lineTimer.endTimeList[i])
         lineTimer.endTimeList[i] = t
+        lineTimer.endValueList[i] = sv
         return i
 
 def exactPeriodFromLine(line: Line, t1, t2) -> Period:

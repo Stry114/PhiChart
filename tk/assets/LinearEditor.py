@@ -1,9 +1,5 @@
-from tkinter import *
-from tkinter import font
-from tkinter import ttk
-from tk.pullbar import *
 from tk.mytk import *
-from chart import *
+from libs.chart import *
 
 
 class LinearEditor(Frame):

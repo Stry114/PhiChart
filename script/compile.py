@@ -1,7 +1,7 @@
-from player import Player
-from autoMatch import Matcher
+from player3D import Player
+from libs.autoMatch import Matcher
 
-player = Player(Matcher(r"D:\Projects\PygamePhiChart\charts\白复生 IN"), w=1200, h=800, fps=60)
+player = Player(Matcher(r"/charts/白复生 IN"), w=1200, h=800, fps=60)
 
 # 设置副标题
 player.name = "白复生"

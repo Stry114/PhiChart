@@ -4,11 +4,11 @@ import zipfile
 import pygame
 import random
 import time
-import math
 import cv2
 from libs import chart, analyzer, autoMatch
 import traceback
-import subprocess
+
+from libs.vec3D import *
 
 
 def open_explorer_and_select_file(file_path):
@@ -80,6 +80,24 @@ def clear_directory(directory, clear=True):
 
     except Exception as e:
         print(f"操作失败: {e}")
+
+def timeTtoBeat(timeT: float):
+    if timeT % 32 < 4:
+        return f"{timeT // 32:.0f}+0/1"
+    elif timeT % 32 < 8:
+        return f"{timeT // 32:.0f}+1/8"
+    elif timeT % 32 < 12:
+        return f"{timeT // 32:.0f}+1/4"
+    elif timeT % 32 < 16:
+        return f"{timeT // 32:.0f}+3/8"
+    elif timeT % 32 < 20:
+        return f"{timeT // 32:.0f}+1/2"
+    elif timeT % 32 < 24:
+        return f"{timeT // 32:.0f}+5/8"
+    elif timeT % 32 < 28:
+        return f"{timeT // 32:.0f}+3/4"
+    elif timeT % 32 < 32:
+        return f"{timeT // 32:.0f}+7/8"
 
 
 timerClock = time.time()
@@ -375,9 +393,10 @@ class PreRendCache:
 
 
 class HitEffect:
-    def __init__(self, x, y):
+    def __init__(self, x, y, scale=1.0):
         self.x = x
         self.y = y
+        self.scale = scale
         self.frame = 0
         self.pos = (x, y)
 
@@ -394,11 +413,10 @@ class HitEffect:
 
 
 class Player:
-    def __init__(self, matcher: autoMatch.Matcher = None, w: int = 1200, h: int = 600, fps: int = 60,
+    def __init__(self, matcher: autoMatch.Matcher = None, w: int = 1200, h: int = 800, fps: int = 120,
                  subtitle="AUTOPLAY", level="Un Lv.?", chartName="Unknown", chartDelay: float = 0,
                  debug: bool = False, displayUI: bool = True, enableMapping: bool = False, doubleHitEffect: bool = True,
                  brightness: float = 0.4, blurRadius: int = 300):
-
 
         self.width = w
         self.height = h
@@ -439,8 +457,8 @@ class Player:
         # 播放进度
         self.timeS = 0
         self.timeT = 0
-        # 全局播放倍速
-        self.speed = 1
+        # 全局速度
+        self.speed = 1.0
         # 播放起始时间
         self.startTimeS = 0
         # 铺面延迟（秒）
@@ -451,11 +469,14 @@ class Player:
         # 暂停
         self.pause = False
         # 性能计时器
-        self.noteCost = None
-        self.holdCost = None
-        self.lineCost = None
-        self.effectCost = None
-        self.hitBlockCost = None
+        # self.noteCost = None
+        # self.holdCost = None
+        # self.lineCost = None
+        # self.effectCost = None
+        # self.hitBlockCost = None
+        self.lineCount = 0
+        self.noteCount = 0
+        self.holdCount = 0
         # 音频长度
         self.waveDurationS = None
         # 映射
@@ -473,15 +494,25 @@ class Player:
         self.speed3D: float = 2.5
         # 渲染最远处
         self.boundary: float = self.height * 3.0
+        # 摄像机位置
+        self.cmrPos: V3d = V3d(w / 2, h / 2, -self.Y)
+        self.cmrDirX: V3d|None = None
+        self.cmrDirY: V3d|None = None
+        self.cmrDirZ: V3d|None = None
+        self.setCmrDir(V3d(0, 0, 1))
+        # 渲染视角（弧度）
+        self.FOV = math.atan(w/2/self.Y) * 2
+        # 焦距（单位）
+        self.FL = 0.01
         # 摄像头位置（设定值）
-        self.cmrB: float = 1.0
-        self.cmrH: float = 1.0
-        self.lower: float = 0.4  # 低视角，按下Shift触发，便于录制天地键
-        self.lowerTimeS = [(10, 15), (122.02, 123.67), (126.80, 128.65), (138.40, 999)]
+        # self.cmrB: float = 1.0
+        # self.cmrH: float = 1.0
+        # self.lower: float = 0.4  # 低视角，按下Shift触发，便于录制天地键
+        # self.lowerTimeS = [(10, 15), (122.02, 123.67), (126.80, 128.65), (138.40, 999)]
         # 摄像头位置（实际值）
-        self.h: float = self.cmrH
-        self.cmrX: float = self.width / 2
-        self.cmrY: float = self.height / 2
+        # self.h: float = self.cmrH
+        # self.cmrX: float = self.width / 2
+        # self.cmrY: float = self.height / 2
 
 
         # 3D转谱
@@ -536,11 +567,20 @@ class Player:
         # 启用船新视角
         self.enableNewVision = False
         # 下放线条选项
-        self.displacementY = 1.0
+        self.displacementY = 0.6
+
+    def setCmrDir(self, dir: V3d, x_angle_inc=0):
+        self.cmrDirZ = dir.direction
+        self.cmrDirX = V3d(self.cmrDirZ.z, 0, -self.cmrDirZ.x)
+        self.cmrDirX.y = math.tan(math.pi - x_angle_inc)
+        self.cmrDirY = V3d.normal(self.cmrDirX, self.cmrDirZ)
+        self.cmrDirX = self.cmrDirX.direction
+        self.cmrDirY = self.cmrDirY.direction
 
     def getNoteHitPos(self, line: chart.Line, note: chart.Note):
         x = line.move1(note.time_) * self.width
-        y = line.move2(note.time_) * self.height * self.displacementY
+        y = line.move2(note.time_) * self.height
+        z = line.move3(note.time_) * self.height
         r = line.rotate(note.time_)
         Vsin = math.sin(math.radians(r))
         Vcos = math.cos(math.radians(r))
@@ -555,7 +595,10 @@ class Player:
             xn = x + dx * Vcos + dy * Vsin
             yn = y + dx * Vsin - dy * Vcos
 
-        return xn, yn
+        if self.enable3D:
+            return self.posTo3DScreen(V3d(xn, yn, z))
+        else:
+            return xn, self.height - yn
 
     def getTempLine(self, type_, doubleHit: bool):
         if doubleHit:
@@ -610,6 +653,31 @@ class Player:
             elif note.type_ == 4:
                 self.tempLineListFlick.append(note.tempLine)
 
+    def posTo2DScreen(self, vec: V3d):
+        return vec.x, self.height - vec.y
+
+    def posTo3DScreen(self, vec: V3d):
+        # 计算相关参数
+        tanFOV = math.tan(self.FOV/2)
+        half_width = self.width / 2
+
+        point = vec - self.cmrPos
+        x = point * self.cmrDirX
+        y = point * self.cmrDirY
+        h = point * self.cmrDirZ
+        if h <= 0:  # 位于摄像机后的点不渲染
+            return None, None
+        xn = self.width/2 + (half_width / (h * tanFOV)) * x
+        yn = self.height/2 - (half_width / (h * tanFOV)) * y
+        return xn, yn
+
+    def projectionOf3DLength(self, pos, length):
+        h = (pos - self.cmrPos) * self.cmrDirZ
+        tanFOV = math.tan(self.FOV/2)
+        half_width = self.width / 2
+        xn = (half_width / (h * tanFOV)) * length
+        return xn
+
 
     def render(self):
 
@@ -627,72 +695,194 @@ class Player:
                 rate = 1 - (effect.frame / len(self.images.preRendHit) - 1) ** 4
                 x = int(effect.x + effect.xList[i] * effect.rList[i] * self.hitEffectSize * rate)
                 y = int(effect.y + effect.yList[i] * effect.rList[i] * self.hitEffectSize * rate)
-                y = self.height - y
                 if self.enableMapping:
                     x, y = self.mappingX(x), self.mappingY(y)
                 pygame.draw.rect(self.foreground_layer, color, (x - size, y - size, size * 2, size * 2))
 
-        self.hitBlockCost = mytimer("特效方块")
-
         for line in self.chart.lineList:
-            x = line.move1(self.timeT) * self.width
-            y = line.move2(self.timeT) * self.height * self.displacementY
-            a = line.alpha(self.timeT)
-            r = line.rotate(self.timeT)
-            Vsin = math.sin(math.radians(r))
-            Vcos = math.cos(math.radians(r))
+            x = line.move1(self.timeT)
+            y = line.move2(self.timeT)
+            z = line.move3(self.timeT)
+            line.alpha1 = line.alpha(self.timeT)
+            # 此刻线的FloorPos
+            line.floorPos = line.pos(self.timeT)
 
-            line.tempX = x
-            line.tempY = y
-            line.tempR = r
-            line.tempS = Vsin
-            line.tempC = Vcos
+            # 方位角
+            line.angleDeg = 0
+            line.angleRad = 0
+            # 下落面倾角
+            line.thetaDeg = line.theta(self.timeT)
+            line.thetaRad = line.thetaDeg * math.pi / 180
+            # 下落高度角
+            line.rotateDeg = line.rotate(self.timeT)
+            line.rotateRad = line.rotateDeg * math.pi / 180
+            line.centerPos = V3d(x*self.width, y*self.height, z*self.height)
 
-            if self.chart.RPE_Chart:
-                scaleX = line.scaleX(self.timeT)
-                scaleY = line.scaleY(self.timeT)
-                color = (line.color(self.timeT)).copy()
-                color.append(min(int(255 * a), 255))
-            else:
-                scaleY = 1.0
-                scaleX = 1.0
-                color = (254, 255, 169, min(int(255 * a), 255))
-
-            x1 = int(x - Vcos * self.lineLength / 2 * scaleX)
-            y1 = int(y - Vsin * self.lineLength / 2 * scaleX)
-            x2 = int(x + Vcos * self.lineLength / 2 * scaleX)
-            y2 = int(y + Vsin * self.lineLength / 2 * scaleX)
-
-            y1 = self.height - y1
-            y2 = self.height - y2
-
-            if self.enableMapping:
-                x1 = self.mappingX(x1)
-                y1 = self.mappingY(y1)
-                x2 = self.mappingX(x2)
-                y2 = self.mappingY(y2)
-
-            x_min = min(x1, x2)
-            x_max = max(x1, x2)
-            y_min = min(y1, y2)
-            y_max = max(y1, y2)
-
-            skip = max(x_min, 0) > min(x_max, self.width) or max(y_min, 0) > min(y_max, self.height)
-            skip = skip or line.attachUI is not None
-
-            if not skip and a > 0.01:
-                self.lineCount += 1
-                pygame.draw.line(
-                    self.foreground_layer, color,
-                    start_pos=(x1, y1),
-                    end_pos=(x2, y2),
-                    width=round(self.lineWidth * scaleY),
-                )
+            self.X = 0.05626 * self.width
+            self.Y = 0.6 * self.height
 
             if self.enable3D:
-                line.cmrDx = -math.cos(math.radians(r)) * (self.cmrX - x) - math.sin(math.radians(r)) * (self.height - self.cmrY -y)
-                line.cmrH = -(math.sin(math.radians(r)) * (self.cmrX - x) - math.cos(math.radians(r)) * (self.height - self.cmrY -y)) / self.Y
+                line.dir = V3d(math.cos(line.rotateRad), math.sin(line.rotateRad), 0).direction
+                line.fallingDirCastOnZ = V3d(math.sin(line.angleRad), 0, math.cos(line.angleRad)).direction
+                line.fallingDirNormal = V3d.normal(line.dir, line.fallingDirCastOnZ)
+                line.fallingDir = math.sin(line.thetaRad) * line.fallingDirNormal + math.cos(line.thetaRad) * line.fallingDirCastOnZ
+            else:
+                line.dir = V3d(math.cos(line.rotateRad), math.sin(line.rotateRad), 0).direction
+                line.fallingDir = V3d(-math.sin(line.rotateRad), math.cos(line.rotateRad), 0).direction
+            line.unitX = 0.05626 * self.width * line.dir
+            line.unitY = 0.6 * self.height * line.fallingDir
 
+        # 透明度排序
+        linesToRender = self.chart.lineList.copy()
+        linesToRender.sort(key=lambda line: line.alpha1)
+
+        for line in linesToRender:
+
+            if line.alpha1 <= 0.1:
+                continue
+
+            line.P1 = line.centerPos + self.lineLength / 2 * line.dir
+            line.P2 = line.centerPos - self.lineLength / 2 * line.dir
+
+            if not self.enable3D:
+                x1, y1 = self.posTo2DScreen(line.P1)
+                x2, y2 = self.posTo2DScreen(line.P2)
+            else:
+                x1, y1 = self.posTo3DScreen(line.P1)
+                x2, y2 = self.posTo3DScreen(line.P2)
+
+            color = (254, 255, 169, min(int(255 * line.alpha1), 255))
+            width = self.projectionOf3DLength(line.centerPos, length=self.lineWidth)
+            pygame.draw.line(
+                self.foreground_layer, color,
+                start_pos=(x1, y1),
+                end_pos=(x2, y2),
+                width=round(width),
+            )
+            self.lineCount += 1
+
+        for line in self.chart.lineList:
+            for note in line.noteList:
+
+                if note.hit:
+                    continue
+                if note.type_ != 3:
+                    continue
+                if self.chart.RPE_Chart:
+                    dy1 = (note.floorPos - line.floorPos) * self.speed3D
+                    dy2 = (note.floorPosT - line.floorPos) * self.speed3D
+                else:
+                    dy1 = (note.floorPos - line.floorPos) * self.speed3D
+                    dy2 = dy1 + (note.holdTime * 1.875 / line.bpm) * note.speed * self.speed3D
+                    dy1 = max(0, dy1)
+                    dy2 = min(self.boundary / self.Y, dy2)
+                if not self.enable3D and not note.above:  # 反向下落取反
+                    dy1, dy2 = -dy1, -dy2
+                note.centerPos1 = line.centerPos + note.posX * line.unitX + dy1 * line.unitY
+                note.centerPos2 = line.centerPos + note.posX * line.unitX + dy2 * line.unitY
+
+
+
+                # 优化，跳过不必要的渲染
+                if not -0.1 * self.width <= note.centerPos1.x <= 1.1 * self.width:
+                    continue
+                elif not -0.1 * self.height <= note.centerPos1.y <= 1.1 * self.height:
+                    continue
+                elif not self.cmrPos.z / 2 <= note.centerPos1.z <= self.boundary:
+                    continue
+
+                xn1, yn1 = self.posTo3DScreen(note.centerPos1)
+                if self.frameIndex % 16 == 0 and note.time_ < self.timeT < note.time_ + note.holdTime:
+                    effect = HitEffect(xn1, yn1)
+                    self.hitEffectList.append(effect)
+                    # 优化，跳过不必要的渲染，注意可能引发不易排查的bug
+                    if xn1 is None or yn1 is None:
+                        continue
+
+                p1 = note.centerPos2 + self.noteSize/2 * line.dir
+                p2 = note.centerPos2 - self.noteSize/2 * line.dir
+                p3 = note.centerPos1 + self.noteSize/2 * line.dir
+                p4 = note.centerPos1 - self.noteSize/2 * line.dir
+                x1, y1 = self.posTo3DScreen(p1)
+                x2, y2 = self.posTo3DScreen(p2)
+                x3, y3 = self.posTo3DScreen(p3)
+                x4, y4 = self.posTo3DScreen(p4)
+
+                if x1 is None or x2 is None or x3 is None or x4 is None:
+                    continue
+                if y1 is None or y2 is None or y3 is None or y4 is None:
+                    continue
+
+                self.holdRender3D(x1, x2, x3, x4, y1, y2, y3, y4)
+                self.holdCount += 1
+
+        for line in self.chart.lineList:
+            for note in line.noteList:
+
+                if note.hit:
+                    continue
+                if note.type_ == 3:
+                    continue
+
+                dy = (note.floorPos - line.floorPos) * self.speed3D
+                dy = dy if note.above else -dy
+                note.centerPos = line.centerPos + note.posX * line.unitX + dy * line.unitY
+                xn, yn = self.posTo3DScreen(note.centerPos)
+                if xn is None:
+                    continue
+
+                if not -0.1 * self.width <= note.centerPos.x <= 1.1 * self.width:
+                    continue
+                elif not -0.1 * self.height <= note.centerPos.y <= 1.1 * self.height:
+                    continue
+                elif not self.cmrPos.z / 2 <= note.centerPos.z <= self.boundary:
+                    continue
+
+                if note.type_ == 1:
+                    surface = self.images.tapHL(line.rotateDeg) if note.doubleHit else self.images.tap(line.rotateDeg)
+                elif note.type_ == 2:
+                    surface = self.images.dragHL(line.rotateDeg) if note.doubleHit else self.images.drag(line.rotateDeg)
+                elif note.type_ == 4:
+                    surface = self.images.flickHL(line.rotateDeg) if note.doubleHit else self.images.flick(line.rotateDeg)
+                else:
+                    continue
+
+                ns = self.projectionOf3DLength(note.centerPos, length=self.noteSize)
+                sr = ns / self.noteSize
+                surface = pygame.transform.scale(
+                    surface,
+                    (surface.get_width() * sr, surface.get_height() * sr),
+                )
+                x0 = int(xn - surface.get_width() / 2)
+                y0 = int(yn - surface.get_height() / 2)
+                self.foreground_layer.blit(surface, (x0, y0))
+                self.noteCount += 1
+                #
+                # if self.displayDebug:
+                #     draw_text(
+                #         self.foreground_layer,
+                #         note.centerPos.roundStr(),
+                #         self.font18, self.WHITE,
+                #         pos=(int(x0), int(y0)),
+                #         align="C",
+                #     )
+
+        # 打击特效本体
+        for effect in self.hitEffectList:
+            x = effect.x - self.hitEffectSize // 2
+            y = effect.y - self.hitEffectSize // 2
+            if effect.scale == 1.0:
+                self.foreground_layer.blit(self.images.hit(effect.frame), (x, y))
+            else:
+                surface = self.images.hit(effect.frame)
+                surface = pygame.transform.scale(surface, (effect.scale, effect.scale))
+                self.foreground_layer.blit(surface, (effect.x-effect.scale//2, effect.y-effect.scale//2))
+            effect.frame += 1
+        self.hitEffectList = [effect for effect in self.hitEffectList if effect.frame < len(self.images.preRendHit)]
+
+
+
+        return
         self.lineCost = mytimer("判定线")
 
         for line in self.chart.lineList:
@@ -703,7 +893,6 @@ class Player:
 
             Vsin = math.sin(math.radians(r))
             Vcos = math.cos(math.radians(r))
-            pos = line.pos(self.timeT)
 
             # 统计线上此帧的note数字
             line.noteFrameCount = 0
@@ -718,22 +907,22 @@ class Player:
 
                 if self.timeT > note.time_:
                     dx = note.posX * self.X
-                    dy = (note.floorPos - pos) * self.Y
-                    dyt = dy + (note.speed * note.holdTime * 1.875 / line.bpm) * self.Y
+                    dy = (note.floorPos - line.floorPos) * self.Y
+                    dyt = dy + (note.speed3D * note.holdTime * 1.875 / line.bpm) * self.Y
                     dy = 0
                 else:
                     dx = note.posX * self.X
-                    dy = (note.floorPos - pos) * self.Y
-                    dyt = dy + (note.speed * note.holdTime * 1.875 / line.bpm) * self.Y
+                    dy = (note.floorPos - line.floorPos) * self.Y
+                    dyt = dy + (note.speed3D * note.holdTime * 1.875 / line.bpm) * self.Y
                 if self.chart.RPE_Chart:
-                    dyt = (note.floorPosT - pos) * self.Y
+                    dyt = (note.floorPosT - line.floorPos) * self.Y
 
-                if self.enable3D and (not note.ban3D):
+                if self.enable3D:
 
                     xt = x + dx * Vcos
                     yt = y + dx * Vsin
                     if not (-self.noteSize*0.5 < xt < self.width+self.noteSize*0.5
-                            and -self.noteSize*0.5 < yt/self.displacementY < self.height+self.noteSize*-0.5):
+                            and -self.noteSize*0.5 < yt/self.displacementY < self.height+self.noteSize*0.5):
                         continue
 
                     # 3D修正
@@ -789,10 +978,10 @@ class Player:
                 if note.alpha == 0:
                     continue
 
-                if self.enable3D and (not note.ban3D) and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
+                if self.enable3D and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
                     continue
 
-                if self.enable3D and (not note.ban3D):
+                if self.enable3D:
                     ns1 = self.noteSize * (self.Y * self.cmrB / (dyo + self.Y * self.cmrB))
                     nst = self.noteSize * (self.Y * self.cmrB / (dyto + self.Y * self.cmrB))
                 else:
@@ -822,7 +1011,7 @@ class Player:
                     y3 = self.mappingY(y3)
                     y4 = self.mappingY(y4)
 
-                if self.enable3D and (not note.ban3D):
+                if self.enable3D:
                     self.holdRender3D(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
                 else:
                     self.holdRender(x1, x2, x3, x4, y1, y2, y3, y4, r, note.above)
@@ -839,7 +1028,6 @@ class Player:
 
             Vsin = math.sin(math.radians(r))
             Vcos = math.cos(math.radians(r))
-            pos = line.pos(self.timeT)
 
             for note in line.noteList:
 
@@ -851,9 +1039,9 @@ class Player:
                     continue
 
                 dx = note.posX * self.X
-                dy = note.speed * (note.floorPos - pos) * self.Y
+                dy = note.speed3D * (note.floorPos - line.floorPos) * self.Y
 
-                if self.enable3D and (not note.ban3D):
+                if self.enable3D:
 
                     xt = x + dx * Vcos
                     yt = y + dx * Vsin
@@ -906,7 +1094,7 @@ class Player:
                 if note.alpha == 0:
                     continue
 
-                if self.enable3D and (not note.ban3D) and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
+                if self.enable3D and (dyo > self.boundary or dyo < -self.cmrB * self.Y):
                     continue
 
                 if self.enableMapping:
@@ -932,7 +1120,7 @@ class Player:
                     elif note.type_ == 4:
                         surface = self.images.flick(r)
 
-                if self.enable3D and (not note.ban3D):
+                if self.enable3D:
                     try:
                         sr = self.Y * self.cmrB / (dyo + self.Y * self.cmrB)
                         # sr = self.Y / (dy + self.Y)
@@ -971,14 +1159,6 @@ class Player:
                 y0 = int(yn + surface.get_height() / 2)
                 y0 = self.height - y0
 
-                # 显示非 above 键
-                # if self.displayDebug and not note.above:
-                #     pygame.draw.rect(
-                #         self.foreground_layer,
-                #         rect=(x0, y0, surface.get_width(), surface.get_height()),
-                #         color=self.RED,
-                #         width=1,
-                #     )
                 self.foreground_layer.blit(surface, (x0, y0))
                 self.noteCount += 1
 
@@ -1217,7 +1397,7 @@ class Player:
             self.foreground_layer.blit(image, (minX, minY))
             self.holdCount += 1
 
-    def holdRender3D(self, x1, x2, x3, x4, y1, y2, y3, y4, angle: float, above):
+    def holdRender3D(self, x1, x2, x3, x4, y1, y2, y3, y4):
 
         aw = x4 - x3
         a1 = x3 + aw * 0.00
@@ -1422,17 +1602,28 @@ class Player:
             align="NW",
         )
 
-        if self.timeCost * self.FPS > 1:
-            color = self.RED
-        elif self.timeCost * self.FPS > 0.8:
-            color = self.YELLOW
-        else:
-            color = self.WHITE
+
         draw_text(
             self.foreground_layer,
-            f"cost: {self.timeCost * 1000:.2f} ms ({self.timeCost * self.FPS:.2%})",
-            self.font18, color,
-            pos=(20, 40),
+            f"cmrPos: {str(self.cmrPos)}",
+            self.font18, self.WHITE,
+            pos=(20, 50),
+            align="NW",
+        )
+
+        draw_text(
+            self.foreground_layer,
+            f"cmrFacing: {str(self.cmrDirZ)}",
+            self.font18, self.WHITE,
+            pos=(20, 75),
+            align="NW",
+        )
+
+        draw_text(
+            self.foreground_layer,
+            f"screenSize: ({self.width}, {self.height})",
+            self.font18, self.WHITE,
+            pos=(20, 100),
             align="NW",
         )
 
@@ -1440,7 +1631,7 @@ class Player:
             self.foreground_layer,
             f"lines: {self.lineCount}",
             self.font18, self.WHITE,
-            pos=(20, 170),
+            pos=(20, 130),
             align="NW",
         )
 
@@ -1448,7 +1639,7 @@ class Player:
             self.foreground_layer,
             f"notes: {self.noteCount}",
             self.font18, self.WHITE,
-            pos=(20, 190),
+            pos=(20, 155),
             align="NW",
         )
 
@@ -1456,7 +1647,7 @@ class Player:
             self.foreground_layer,
             f"holds: {self.holdCount}",
             self.font18, self.WHITE,
-            pos=(20, 210),
+            pos=(20, 180),
             align="NW",
         )
 
@@ -1464,7 +1655,7 @@ class Player:
             self.foreground_layer,
             f"effects: {len(self.hitEffectList)}",
             self.font18, self.WHITE,
-            pos=(20, 230),
+            pos=(20, 205),
             align="NW",
         )
 
@@ -1472,7 +1663,7 @@ class Player:
             self.foreground_layer,
             f"pre-rendered images cache:",
             self.font18, self.WHITE,
-            pos=(20, 260),
+            pos=(20, 235),
             align="NW",
         )
 
@@ -1481,7 +1672,7 @@ class Player:
             self.foreground_layer,
             f"tap: {cacheCount}",
             self.font18, self.WHITE,
-            pos=(20, 280),
+            pos=(20, 260),
             align="NW",
         )
 
@@ -1490,7 +1681,7 @@ class Player:
             self.foreground_layer,
             f"drag: {cacheCount}",
             self.font18, self.WHITE,
-            pos=(20, 300),
+            pos=(20, 285),
             align="NW",
         )
 
@@ -1499,7 +1690,7 @@ class Player:
             self.foreground_layer,
             f"flick: {cacheCount}",
             self.font18, self.WHITE,
-            pos=(20, 320),
+            pos=(20, 310),
             align="NW",
         )
 
@@ -1507,65 +1698,30 @@ class Player:
             self.foreground_layer,
             f"timeT: {self.timeT: .02f}",
             self.font18, self.WHITE,
-            pos=(20, 350),
+            pos=(20, 340),
             align="NW",
         )
         draw_text(
             self.foreground_layer,
             f"timeS: {self.timeS: .02f} s",
             self.font18, self.WHITE,
-            pos=(20, 370),
+            pos=(20, 365),
             align="NW",
         )
         draw_text(
             self.foreground_layer,
-            f"beats: {self.timeT // 32: .0f}",
+            f"beats: {timeTtoBeat(self.timeT)}",
             self.font18, self.WHITE,
             pos=(20, 390),
             align="NW",
         )
-
         draw_text(
             self.foreground_layer,
-            f"hit: {self.hitBlockCost * 1000: .2f} ms",
+            f"frameCount: {self.frameIndex}",
             self.font18, self.WHITE,
-            pos=(20, 60),
+            pos=(20, 415),
             align="NW",
         )
-        draw_text(
-            self.foreground_layer,
-            f"effect: {self.effectCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 80),
-            align="NW",
-        )
-        draw_text(
-            self.foreground_layer,
-            f"note: {self.noteCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 100),
-            align="NW",
-        )
-        draw_text(
-            self.foreground_layer,
-            f"line: {self.lineCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 120),
-            align="NW",
-        )
-        draw_text(
-            self.foreground_layer,
-            f"hold: {self.holdCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 140),
-            align="NW",
-        )
-
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 60, self.hitBlockCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 80, self.effectCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 100, self.noteCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 120, self.lineCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 140, self.holdCost / (1 / self.FPS) * 100, 16))
 
     def initPlayer(self):
         # 初始化 pygame
@@ -1659,7 +1815,7 @@ class Player:
                         if note.type_ == 3:
                             note.holdTime = 0
                             note.type_ = 1
-                            note.speed = 1.0
+                            note.speed3D = 1.0
 
             # 处理全新视角
             if not self.enableNewVision:
@@ -1676,7 +1832,6 @@ class Player:
 
         # 计时器，用于评估性能
         timer = time.time()
-        self.timeCost = 10 ** -6
         delta = 10 ** -6
 
         # 用于统计平均帧数
@@ -1686,7 +1841,6 @@ class Player:
 
         # 计算铺面延迟
         self.timeS = - self.chartDelay + self.startTimeS
-        self.timeS -= self.chart.offset/1000
         self.timeT = self.timeS * self.BPM / 1.875
 
         # 播放bgm
@@ -1695,14 +1849,13 @@ class Player:
         pygame.mixer.music.set_pos(self.startTimeS)
 
         # 处理startTimeS前的所有note
-        for line in self.chart.lineList:
-            for note in line.noteList:
-                if note.time_ < self.timeT:
-                    note.hit = True
-                    self.combo += 1
+        for note in self.chart.noteList:
+            if note.time_ < self.timeT:
+                note.hit = True
 
         while running:
-            # 处理事件
+
+            ### 处理事件 ###
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -1710,17 +1863,14 @@ class Player:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.pause = not self.pause
-
             if self.pause:
                 clock.tick(self.FPS)
                 continue
-
             if self.timeS > self.waveDurationS:
                 running = False
                 break
 
-            # 清空屏幕（用白色填充）
-            # 绘制当前帧的所有内容
+            ### 渲染画面 ###
             try:
                 self.screen.fill(self.WHITE)
                 if self.timeT > 0:
@@ -1731,27 +1881,60 @@ class Player:
                 traceback.print_exc()
                 print(f"Render Error at timeT={self.timeT}, timeS={self.timeS}")
 
-            # 3. 更新显示
             self.screen.blit(self.background_layer, (0, 0))
             self.screen.blit(self.foreground_layer, (0, 0))
             pygame.display.flip()
 
+            ### 更新计时器
+            current = time.time()
+            delta = current - timer
+            deltaT = delta * self.BPM / 1.875
+            # 统计帧数
+            frameCount += 1
+            self.frameIndex += 1
+            if timer // 1 != current // 1:
+                self.secondCount = frameCount
+                frameCount = 0
+
+            ### 键打击判定
+            for line in self.chart.lineList:
+                for note in line.noteList:
+                    if note.type_ != 3:
+                        if self.timeT < note.time_ < self.timeT + deltaT:
+                            xn, yn = self.getNoteHitPos(line, note)
+                            note.hit = True
+                            self.combo += 1
+                            self.score += 1 * 10 ** 6 / self.chart.noteCount
+                            if xn is not None and yn is not None:
+                                effect = HitEffect(xn, yn)
+                                self.hitEffectList.append(effect)
+
+                            if note.type_ == 1:
+                                self.tapSound.play()
+                            elif note.type_ == 2:
+                                self.dragSound.play()
+                            elif note.type_ == 4:
+                                self.flickSound.play()
+                    else:
+                        if self.timeT < note.time_ < self.timeT + deltaT:
+                            self.tapSound.play()
+                            xn, yn = self.getNoteHitPos(line, note)
+                            if xn is not None and yn is not None:
+                                effect = HitEffect(xn, yn)
+                                self.hitEffectList.append(effect)
+                        if self.timeT < note.time_ + note.holdTime < self.timeT + deltaT:
+                            note.hit = True
+                            self.combo += 1
+                            self.score += 1 * 10 ** 6 / self.chart.noteCount
+
+            ### 帧率控制 阻塞线程
+
+            clock.tick(self.FPS)
             if self.enableCompiler:
                 self.timeS += 1 / self.FPS
                 self.timeT = self.timeS * self.BPM / 1.875
             else:
-                # 控制帧率
-                self.timeCost = time.time() - timer + 1e-6
-                clock.tick(self.FPS)
-                # 统计帧数
-                frameCount += 1
-                self.frameIndex += 1
-                if timer // 1 != time.time() // 1:
-                    self.secondCount = frameCount
-                    frameCount = 0
-
-                current = time.time()
-                delta = current - timer
+                # 同步时间变量
                 timer = current
                 self.timeS += delta * self.speed
                 self.timeT = self.timeS * self.BPM / 1.875

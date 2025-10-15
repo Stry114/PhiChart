@@ -30,8 +30,9 @@ class V3d:
         return V3d(self.y * other.z - self.z * other.y,
                    self.z * other.x - self.x * other.z,
                    self.x * other.y - self.y * other.x)
-    
-    def normalize(self) -> "V3d":
+
+    @property
+    def direction(self) -> "V3d":
         length = abs(self)
         if length == 0:
             return V3d(0, 0, 0)
@@ -39,13 +40,27 @@ class V3d:
     
     def __repr__(self) -> str:
         return f"V3d({self.x}, {self.y}, {self.z})"
-    
+
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y}, {self.z})"
+
+    def roundStr(self) -> str:
+        return f"({self.x:.0f}, {self.y:.0f}, {self.z:.0f})"
+
     def to_tuple(self) -> tuple:
         return (self.x, self.y, self.z)
     
     @staticmethod
     def from_tuple(t: tuple) -> "V3d":
         return V3d(t[0], t[1], t[2])
+
+    @staticmethod
+    def normal(vec1, vec2):
+        # 法向量 normal vector
+        x = vec1.z * vec2.y - vec1.y * vec2.z
+        y = vec1.x * vec2.z - vec1.z * vec2.x
+        z = vec1.y * vec2.x - vec1.x * vec2.y
+        return V3d(x, y, z)
     
     def distance_to(self, other: "V3d") -> float:
         return abs(self - other)

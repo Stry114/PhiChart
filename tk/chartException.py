@@ -1,7 +1,6 @@
 import time
 
-from chart import *
-import math
+from libs.chart import *
 
 
 class ChartException:

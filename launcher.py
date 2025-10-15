@@ -7,13 +7,10 @@ import traceback
 
 import pygame
 
-import player
 from libs.toolTip import ToolTip
-from player import Player
-from analyzer import analyzeJson
-from autoMatch import Matcher
-
-from assets.lang import ZH_CN as lang
+from player3D import Player
+from libs.analyzer import analyzeJson
+from libs.autoMatch import Matcher
 
 top = Tk()
 top.title("PhiChart Launcher v0.4 by Stry")
@@ -182,7 +179,7 @@ def selectLines(*args):
         line = chart.lineList[i]
         noteNum = len(line.noteList)
         moveNum = len(line.move1.startTimeList)
-        speedNum = len(line.speed.startTimeList)
+        speedNum = len(line.speed3D.startTimeList)
         alphaNum = len(line.alpha.startTimeList)
         rotationNum = len(line.rotate.startTimeList)
 

@@ -1,6 +1,6 @@
 import json
-import chart as ch
-import RPEanalyzer
+import libs.chart as ch
+import libs.RPEanalyzer as RPEanalyzer
 
 
 def analyzeJson(jsonFile: str):

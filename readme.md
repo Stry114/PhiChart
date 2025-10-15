@@ -10,16 +10,11 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
  - pygame
  - numpy
 
-# 如何使用 PhiChart 渲染器
-### 方法一
+# PhiChart启动器
 转到右侧`Release`下载启动器，打开启动器。
 ![](readme/new_launcher.png)
 
-### 方法二
-1. 下载项目源码，安装所需的依赖库。
-2. 编写启动脚本（参考`demo.py`）。
-
-# 如何使用转谱器
+# 3D转谱器
 1. 转到右侧`Release`下载启动器，打开启动器。
 2. 勾选 `立体转谱与RPE选项` 中的 `启用转谱`。
 3. 解压谱面压缩包，点击 `打开文件夹` 并选中所在目录。
@@ -28,14 +23,56 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
 ![](readme/compiling.png)
 
 
-# 编写启动脚本（不建议）
-Player提供了丰富的自定义参数，允许用户实现各种奇特的功能。
+# 编写启动脚本
+ - Player类提供了丰富的自定义参数，允许用户实现各种奇特的功能。
+ - Player3D类在Player类的基础上实现了更多功能。
+
+## Player类接口与功能清单
+### 接口
+|成员/方法|描述|在Player类中的描述|在Player3D类中的描述|默认值|数据类型|
+|---|---|---|---|---|---|
+|`width`|窗口宽度，像素|||1200|`int`|
+|`height`|窗口高度，像素||默认值为800|600|`int`|
+|`lineLength`|判定线长度|||3.6*屏幕高度|`float`|
+|`lineWidth`|判定线宽度|||0.006*屏幕高度|`float`|
+|`noteSize`|键的宽度|||屏幕宽度/8|`float`|
+|`hitEffectSize`|打击特效的宽度和高度|||屏幕宽度/6|`float`|
+|`subtitle`|连击数下方的字||||`str`|
+|`level`|右下角的字||||`str`|
+|`name`|左下角的字||||`str`|
+|`displayDebug`|是否显示调试信息，可能影响性能|||false|`bool`|
+|`displayUI`|是否显示UI。当此值为false时，`displayDebug`值失效|||true|`bool`|
+|`doubleHitEffect`|是否高亮显示双押|||true|`bool`|
+|`FPS`|最大帧率，并非固定帧率||默认值为120|60|`int`|
+|`speed`|谱面播放倍速，不影响音乐|||1.0|`float`|
+|`startTimeS`|开始播放的位置，必须为整数，秒|||0.0|`int`|
+|`chartDelay`|谱面延迟，秒|||0.0|`float`|
+|`enableMapping`|启用谱面揭秘|||False|`bool`|
+|~~`targetRectOfMapping`~~|启用谱面揭秘后，将原画面缩放到的区域|||已被禁用|`tuple[float]`|
+|`enable3D`|启用立体事件；此值为False时，与本家无异|默认值为False；当此值为True时，所有键的下落方向改为z轴向外|默认值为True；当此值为True时，启用PhiChart新增的theta、moveZ、angle三个立体事件||`bool`|
+|`speed3D`|流速倍率|仅在`enable3D`为True时生效|一直生效|1.0|`float`|
+|`boundary`|z轴渲染的最远距离。启用3D后，此值为键出现的位置|||3*屏幕高度|`float`|
+|`cmrPos`|摄像机位置，向量|无此值||屏幕中央|自定义类`vec3D.V3d`|
+|`FOV`|视角大小，弧度制|无此值||待补充|`float`|
+|`FL`|摄像机最近成像距离|无此值||待补充|`float`|
+|`enableCompiler`|||||``|
+|``|||||``|
+|``|||||``|
+|``|||||``|
+|``|||||``|
+|``|||||``|
+|``|||||``|
+|``|||||``|
+
+
+
+## 启动脚本示例
 ### 1. 默认参数
 打开`demo.py`
-```python
-from player import Player
-from autoMatch import Matcher
 
+```python
+from player3D import Player
+from libs.autoMatch import Matcher
 
 player = Player(Matcher("charts/rr/"))
 player.initPlayer()
@@ -100,10 +137,10 @@ player = Player(Matcher("charts/rr/"), displayUI=False)
 player = Player(Matcher("charts/rr/"), enableMapping=True)
 ```
 开启后会缩放画面，使得平时处于画面外的内容能够被看到，从而制作出类似“谱面揭秘”的功能。
-```python
-from player import Player
-from autoMatch import Matcher
 
+```python
+from player3D import Player
+from libs.autoMatch import Matcher
 
 player = Player(Matcher("charts/rr/"), w=1200, h=800)
 # player.targetRectOfMapping = (300, 200, 900, 600)  # 此参数暂时受限，不允许自定义
@@ -123,10 +160,10 @@ player = Player(Matcher("charts/rr/"), brightness=0.8, blurRadius=20)
 
 ### 8.立体谱面
 以下是示例代码和相关参数的设置。启动器暂未同步此功能。
-```python
-from player import Player
-from autoMatch import Matcher
 
+```python
+from player3D import Player
+from libs.autoMatch import Matcher
 
 player = Player(Matcher("charts/白复生 IN"), w=1920, h=1080, fps=90)
 
@@ -138,8 +175,8 @@ player.level = "IN Lv.16"
 player.enable3D = True
 
 # 设置摄像机位置，推荐处于中间偏上的位置
-player.cmrY = player.height*0.72
-player.cmrX = player.width*0.5
+player.cmrY = player.height * 0.72
+player.cmrX = player.width * 0.5
 
 # 设置键出现的位置，推荐值为3倍屏幕高度
 player.boundary = 3.0 * player.height
@@ -161,8 +198,9 @@ player.mainloop()
  - 因此，PhiChart并不支持官谱中所不支持的功能（键透明度、非线性事件、故事版等等），但转译功能将仅作为过渡，后续会逐渐支持各种自制谱功能。
 ### 转译器
 转译工作将自动完成，你也可以使用以下代码单独调用转译器：
+
 ```python
-from RPEanalyzer import analyzeJson
+from libs.RPEanalyzer import analyzeJson
 
 chart = analyzeJson("xxx/xxx.json（自制谱路径）")
 f = open("xxx/output.json（导出路径）", "w", encoding="utf-8")

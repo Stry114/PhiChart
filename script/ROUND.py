@@ -1,12 +1,9 @@
-import math
-import random
-
-from chart import *
-from player import *
-from autoMatch import Matcher
+from libs.chart import *
+from player3D import *
+from libs.autoMatch import Matcher
 
 
-player: Player = Player(Matcher(r"charts/Trojan"), 1440, 1080, fps=120)
+player: Player = Player(Matcher(r"../charts/Trojan"), 1440, 1080, fps=120)
 player.name = "Trojan"
 player.level = "SP Lv.?"
 player.lineLength = 10000

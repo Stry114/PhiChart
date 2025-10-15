@@ -1,13 +1,10 @@
-import os
-import toml
-from chart import *
+from libs.chart import *
 
 
 def lineTimer2tml(lineTimer: LineTimer):
     # 根据 chart.py 中的 LineTimer 类，将 lineTimer 对象转换为 TOML 格式的字符串
     return {
         "bpm": lineTimer.bpm,
-        "peroidCount": lineTimer.peroidCount,
         "endTimeList": lineTimer.endTimeList,
         "endValueList": lineTimer.endValueList,
         "startTimeList": lineTimer.startTimeList,
@@ -32,7 +29,8 @@ def note2toml(note: Note):
         "isFake": note.isFake,
         "hit": note.hit,
         "begin": note.begin,
-        "doubleHit": note.doubleHit
+        "doubleHit": note.doubleHit,
+        "ban3D": note.ban3D,
     }
 
 
@@ -42,6 +40,7 @@ def line2toml(line: Line):
         "bpm": line.bpm,
         "move1": lineTimer2tml(line.move1),
         "move2": lineTimer2tml(line.move2),
+        "move3": lineTimer2tml(line.move3),
         "speed": lineTimer2tml(line.speed),
         "alpha": lineTimer2tml(line.alpha),
         "rotate": lineTimer2tml(line.rotate),
@@ -94,6 +93,7 @@ def toml2note(dic: dict):
     note.hit = dic["hit"]
     note.begin = dic["begin"]
     note.doubleHit = dic["doubleHit"]
+    note.ban3D = dic["ban3D"] if "ban3D" in dic else 0
     return note
 
 def toml2linetimer(dic: dict):
@@ -101,7 +101,6 @@ def toml2linetimer(dic: dict):
     lineTimer: LineTimer = LineTimer(0, 0.0)
     # 将字典中的键值对赋值给 LineTimer 对象的属性
     lineTimer.bpm = dic["bpm"]
-    lineTimer.peroidCount = int(dic["peroidCount"])
     lineTimer.endTimeList = dic["endTimeList"]
     lineTimer.endValueList = dic["endValueList"]
     lineTimer.startTimeList = dic["startTimeList"]
@@ -116,10 +115,11 @@ def toml2line(dic: dict):
     line.bpm = dic["bpm"]
     line.move1 = toml2linetimer(dic["move1"])
     line.move2 = toml2linetimer(dic["move2"])
+    line.move3 = toml2linetimer(dic["move3"]) if "move3" in dic else LineTimer(line.bpm, 0)
     line.speed = toml2linetimer(dic["speed"])
     line.alpha = toml2linetimer(dic["alpha"])
     line.rotate = toml2linetimer(dic["rotate"])
-    line.theta = toml2linetimer(dic["theta"])
+    line.theta = toml2linetimer(dic["theta"]) if "theta" in dic else LineTimer(line.bpm, 0)
     line.noteList = [toml2note(note) for note in dic["noteList"]]
     line.scaleX = toml2linetimer(dic["scaleX"])
     line.scaleY = toml2linetimer(dic["scaleY"])

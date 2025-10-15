@@ -1,5 +1,5 @@
 import json
-import chart as ch
+import libs.chart as ch
 
 
 def beatToTimeT(beat: list[int, int, int], line):
@@ -23,53 +23,71 @@ def analyzeJson(jsonFile: str):
     f.close()
 
     chart.bpm = float(chart_["BPMList"][0]["bpm"])
+    chart.offset = float(chart_["META"]["offset"])
 
     for line_ in chart_["judgeLineList"]:
         bpm = float(line_["bpmfactor"]) * chart.bpm
         line = ch.RPELine(bpm)
 
-        # speed event
-        for event in line_["eventLayers"][0]["speedEvents"]:
-            line.speed.addPeriod(
-                float(beatToTimeT(event["startTime"], line)),
-                float(beatToTimeT(event["endTime"], line)),
-                float(event["start"])*2/9,
-                float(event["end"])*2/9,
-            )
+        if "attachUI" in line_:
+            line.attachUI = line_["attachUI"]
 
-        # move event
-        for event in line_["eventLayers"][0]["moveXEvents"]:
-            line.move1.addPeriod(
-                float(beatToTimeT(event["startTime"], line)),
-                float(beatToTimeT(event["endTime"], line)),
-                float(event["start"])/1350+0.5,
-                float(event["end"])/1350+0.5,
-            )
-        for event in line_["eventLayers"][0]["moveYEvents"]:
-            line.move2.addPeriod(
-                float(beatToTimeT(event["startTime"], line)),
-                float(beatToTimeT(event["endTime"], line)),
-                float(event["start"])/900+0.5,
-                float(event["end"])/900+0.5,
-            )
+        for i in range(len(line_["eventLayers"])):
 
-        # rotate event
-        for event in line_["eventLayers"][0]["rotateEvents"]:
-            line.rotate.addPeriod(
-                float(beatToTimeT(event["startTime"], line)),
-                float(beatToTimeT(event["endTime"], line)),
-                360-float(event["start"]),
-                360-float(event["end"]),
-            )
+            # 读取并创建事件层
+            layer_ = line_["eventLayers"][i]
+            if layer_ is None:
+                continue
+            layer = ch.EventLayer(bpm)
+            line.eventLayers.append(layer)
 
-        # alpha event
-        for event in line_["eventLayers"][0]["alphaEvents"]:
-            line.alpha.addPeriod(
-                float(beatToTimeT(event["startTime"], line)),
-                float(beatToTimeT(event["endTime"], line)),
-                float(event["start"])/255,
-                float(event["end"])/255,
-            )
+            # speed event
+            if "speedEvents" in line_["eventLayers"][i]:
+                for event in line_["eventLayers"][i]["speedEvents"]:
+                    layer.speed.addPeriod(
+                        float(beatToTimeT(event["startTime"], line)),
+                        float(beatToTimeT(event["endTime"], line)),
+                        float(event["start"])*2/9,
+                        float(event["end"])*2/9,
+                    )
+
+            # move event
+            if "moveXEvents" in line_["eventLayers"][i]:
+                for event in line_["eventLayers"][i]["moveXEvents"]:
+                    layer.move1.addPeriod(
+                        float(beatToTimeT(event["startTime"], line)),
+                        float(beatToTimeT(event["endTime"], line)),
+                        float(event["start"])/1350+0.5,
+                        float(event["end"])/1350+0.5,
+                    )
+            if "moveYEvents" in line_["eventLayers"][i]:
+                for event in line_["eventLayers"][i]["moveYEvents"]:
+                    layer.move2.addPeriod(
+                        float(beatToTimeT(event["startTime"], line)),
+                        float(beatToTimeT(event["endTime"], line)),
+                        float(event["start"])/900+0.5,
+                        float(event["end"])/900+0.5,
+                    )
+
+            # rotate event
+            if "rotateEvents" in line_["eventLayers"][i]:
+                for event in line_["eventLayers"][i]["rotateEvents"]:
+                    layer.rotate.addPeriod(
+                        float(beatToTimeT(event["startTime"], line)),
+                        float(beatToTimeT(event["endTime"], line)),
+                        360-float(event["start"]),
+                        360-float(event["end"]),
+                    )
+
+            # alpha event
+            if "alphaEvents" in line_["eventLayers"][i]:
+                for event in line_["eventLayers"][i]["alphaEvents"]:
+                    layer.alpha.addPeriod(
+                        float(beatToTimeT(event["startTime"], line)),
+                        float(beatToTimeT(event["endTime"], line)),
+                        float(event["start"])/255,
+                        float(event["end"])/255,
+                    )
 
         # scale X event
         if "scaleXEvents" in line_["extended"]:

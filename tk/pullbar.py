@@ -1,8 +1,6 @@
-from tkinter import *
 from tk.mytk import *
-from tkinter import font
 import time
-import tk.color255 as c255
+import libs.color255 as c255
 
 theme_color = "#fff"
 basic_color = "#333"

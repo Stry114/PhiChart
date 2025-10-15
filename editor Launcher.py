@@ -1,13 +1,7 @@
-from tkinter import *
-from tkinter import messagebox
-from tkinter import filedialog
-from tk.pullbar import *
-from autoMatch import *
-from analyzer import *
+from libs.autoMatch import *
 from tk.timelineEditor import *
 import multiprocessing
 import tk.tomlIO as tomlIO
-import chart
 import toml
 import os
 import re
@@ -26,7 +20,6 @@ def fix_homogeneous_array(content):
 
 
 def newDir():
-
     def submit():
         if et1.get() == "":
             messagebox.showinfo("Error", "曲名为空。")
@@ -54,6 +47,15 @@ def newDir():
             messagebox.showinfo("Error", "线数格式错误。")
             return
 
+        # 校验数据是否处于推荐值范围内
+        try:
+            assert 1 <= int(et10.get()) <= 24, "线数超出推荐范围（1~24）。"
+            assert 1 <= int(et9.get()) <= 1000, "BPM超出推荐范围（1~1000）。"
+        except AssertionError as e:
+            i = messagebox.askokcancel("警告",
+                                       str(e) + "\n不合理的设置可能会导致程序运行不稳定，并意外的bug。\n是否继续？")
+            if not i:
+                return
 
         dir = os.path.join("./tk/projects/", et1.get())
 
@@ -63,7 +65,6 @@ def newDir():
         else:
             messagebox.showinfo("Error", f"名为：\n{dir}\n的项目文件夹已存在。")
             return
-
 
         # 复制文件到新文件夹
         import shutil
@@ -97,20 +98,28 @@ def newDir():
         openDir(dir)
 
     def selectImage():
-        file = filedialog.askopenfilename(initialdir="charts/", title="选择曲绘", filetypes=(("PNG文件", "*.png"), ("JPG文件", "*.jpg;*.jpeg"), ("所有文件", "*.*")))
+        file = filedialog.askopenfilename(initialdir="charts/", title="选择曲绘", filetypes=(
+        ("PNG文件", "*.png"), ("JPG文件", "*.jpg;*.jpeg"), ("所有文件", "*.*")))
         if file:
+            if not (file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg")):
+                messagebox.showerror("文件类型", "曲绘文件：使用了不受支持的文件类型。")
+                return
             et2.delete(0, END)
             et2.insert(0, file)
 
     def selectAudio():
-        file = filedialog.askopenfilename(initialdir="charts/", title="选择音频", filetypes=(("WAV文件", "*.wav"), ("MP3文件", "*.mp3"), ("所有文件", "*.*")))
+        file = filedialog.askopenfilename(initialdir="charts/", title="选择音频",
+                                          filetypes=(("WAV文件", "*.wav"), ("MP3文件", "*.mp3"), ("所有文件", "*.*")))
         if file:
+            if not (file.endswith(".wav") or file.endswith(".mp3")):
+                messagebox.showerror("文件类型", "音频文件：使用了不受支持的文件类型。")
+                return
             et3.delete(0, END)
             et3.insert(0, file)
 
     def randomID():
         import random
-        id = str(random.randint(10^12, 10^13-1))
+        id = str(random.randint(10 ^ 12, 10 ^ 13 - 1))
         et5.delete(0, END)
         et5.insert(0, id)
 
@@ -119,12 +128,10 @@ def newDir():
     top.geometry('720x720')
     top.config(bg="#222", padx=30, pady=30)
     top.title('PhiChart Editor Launcher')
-    top.minsize(600,600)
-
+    top.minsize(600, 600)
 
     lf1 = LabelFrameDark(top, text="META（元数据）", padx=10, pady=10)
     lf1.pack(side=TOP, fill=X)
-
 
     lf1.columnconfigure(1, weight=1)
 
@@ -168,13 +175,13 @@ def newDir():
     et10 = EntryDark(lf1)
     et10.grid(row=9, column=1, padx=5, pady=5, sticky=NSEW, columnspan=2)
 
-    # et1.insert(END, "123123")
-    # et2.insert(END, r"D:\Projects\PygamePhiChart\tk\assets\base.png")
-    # et3.insert(END, r"D:\Projects\PygamePhiChart\charts\db doll\dbdoll.wav")
-    # et4.insert(END, "123123")
-    # et5.insert(END, "123123")
-    # et9.insert(END, "123")
-    # et10.insert(END, "24")
+    et1.insert(END, "123123")
+    et2.insert(END, r"D:\Projects\PygamePhiChart\tk\assets\base.png")
+    et3.insert(END, r"D:\Projects\PygamePhiChart\charts\db doll\dbdoll.wav")
+    et4.insert(END, "123123")
+    et5.insert(END, "123123")
+    et9.insert(END, "123")
+    et10.insert(END, "24")
 
     bt1 = ButtonDark(top, text="创建", height=2, command=submit)
     bt1.pack(side=BOTTOM, fill=X)
@@ -188,7 +195,7 @@ def newDir():
 
 class FileButton(ButtonDark):
     def __init__(self, master, file, func):
-        super().__init__(master, text="    "+file, command=self.command, anchor="w")
+        super().__init__(master, text="    " + file, command=self.command, anchor="w")
         self.file = file
         self.func = func
 
@@ -202,7 +209,6 @@ def askOpenDir():
         openDir(file)
 
 
-
 def openDir(dir: str):
     try:
         matcher = TomlMatcher(dir)
@@ -214,7 +220,7 @@ def openDir(dir: str):
         traceback.print_exc()
         messagebox.showinfo("Error", str(e))
         return
-    
+
     try:
         root.destroy()
     except Exception:
@@ -229,7 +235,6 @@ def openDir(dir: str):
     mainloop()
 
 
-
 if __name__ == '__main__':
 
     multiprocessing.freeze_support()
@@ -238,7 +243,7 @@ if __name__ == '__main__':
     root.geometry('720x720')
     root.config(bg="#222", padx=30, pady=30)
     root.title('PhiChart Editor Launcher')
-    root.minsize(600,600)
+    root.minsize(600, 600)
 
     root.columnconfigure(1, weight=1)
     img1 = PhotoImage(file='assets/new.png')
@@ -254,6 +259,6 @@ if __name__ == '__main__':
     for i in range(min(10, len(dirList))):
         dir = os.path.join("./tk/projects/", dirList[i])
         this = FileButton(root, dir, openDir)
-        this.grid(row=i+2, column=0, padx=0, pady=2, sticky=EW, columnspan=2)
+        this.grid(row=i + 2, column=0, padx=0, pady=2, sticky=EW, columnspan=2)
 
     root.mainloop()

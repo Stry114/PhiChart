@@ -1,12 +1,11 @@
-from tkinter import *
 from tkinter import font
 
-import analyzer
+from libs import analyzer
 from tk.chartException import sorted
 from tk.pullbar import *
-from tk.color255 import Color
+from libs.color255 import Color
 from pygame import mixer
-from chart import *
+from libs.chart import *
 import time
 import json
 import os
@@ -33,22 +32,25 @@ COLOR_DARK_LIST = [COLOR1_DARK, COLOR2_DARK, COLOR3_DARK, COLOR4_DARK, COLOR5_DA
 BG_COLOR = Color("#333")
 MOVE1_COLOR_obj = Color("#999999")
 MOVE2_COLOR_obj = Color("#ffd700")
+MOVE3_COLOR_obj = Color("#FF6347")
 SPEED_COLOR_obj = Color("#1e90ff")
 ALPHA_COLOR_obj = Color("#00FA9A")
 THETA_COLOR_obj = Color("#7A67EE")
 ROTATE_COLOR_obj = Color("#FF1493")
 MOVE1_COLOR = MOVE1_COLOR_obj.toRRGGBB()
 MOVE2_COLOR = MOVE2_COLOR_obj.toRRGGBB()
+MOVE3_COLOR = MOVE3_COLOR_obj.toRRGGBB()
 SPEED_COLOR = SPEED_COLOR_obj.toRRGGBB()
 ALPHA_COLOR = ALPHA_COLOR_obj.toRRGGBB()
 THETA_COLOR = THETA_COLOR_obj.toRRGGBB()
 ROTATE_COLOR = ROTATE_COLOR_obj.toRRGGBB()
-MOVE1_COLOR_DARK = MOVE1_COLOR_obj.mix(BG_COLOR, 0.2).toRRGGBB()
-MOVE2_COLOR_DARK = MOVE2_COLOR_obj.mix(BG_COLOR, 0.2).toRRGGBB()
-SPEED_COLOR_DARK = SPEED_COLOR_obj.mix(BG_COLOR, 0.2).toRRGGBB()
-ALPHA_COLOR_DARK = ALPHA_COLOR_obj.mix(BG_COLOR, 0.2).toRRGGBB()
-THETA_COLOR_DARK = THETA_COLOR_obj.mix(BG_COLOR, 0.2).toRRGGBB()
-ROTATE_COLOR_DARK = ROTATE_COLOR_obj.mix(BG_COLOR, 0.2).toRRGGBB()
+MOVE1_COLOR_DARK = MOVE1_COLOR_obj.mix(BG_COLOR, 0.25).toRRGGBB()
+MOVE2_COLOR_DARK = MOVE2_COLOR_obj.mix(BG_COLOR, 0.25).toRRGGBB()
+MOVE3_COLOR_DARK = MOVE3_COLOR_obj.mix(BG_COLOR, 0.25).toRRGGBB()
+SPEED_COLOR_DARK = SPEED_COLOR_obj.mix(BG_COLOR, 0.25).toRRGGBB()
+ALPHA_COLOR_DARK = ALPHA_COLOR_obj.mix(BG_COLOR, 0.25).toRRGGBB()
+THETA_COLOR_DARK = THETA_COLOR_obj.mix(BG_COLOR, 0.25).toRRGGBB()
+ROTATE_COLOR_DARK = ROTATE_COLOR_obj.mix(BG_COLOR, 0.25).toRRGGBB()
 
 TAP_COLOR_obj = Color("#00BFFF")
 DRAG_COLOR_obj = Color("#FFD700")
