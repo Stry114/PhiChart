@@ -1,4 +1,78 @@
 import copy
+import math
+import time
+import typing
+
+# rpe 缓动函数 参考自：
+# https://teamflos.github.io/phira-docs/chart-standard/chart-format/rpe/extend.html#easingType
+ease_funcs: list[typing.Callable[[float], float]] = [
+  lambda t: t, # idk why ysj's index was began with 1... this is a placeholder for default value.
+  lambda t: t, # linear - 1
+  lambda t: math.sin((t * math.pi) / 2), # out sine - 2
+  lambda t: 1 - math.cos((t * math.pi) / 2), # in sine - 3
+  lambda t: 1 - (1 - t) * (1 - t), # out quad - 4
+  lambda t: t ** 2, # in quad - 5
+  lambda t: -(math.cos(math.pi * t) - 1) / 2, # io sine - 6
+  lambda t: 2 * (t ** 2) if t < 0.5 else 1 - (-2 * t + 2) ** 2 / 2, # io quad - 7
+  lambda t: 1 - (1 - t) ** 3, # out cubic - 8
+  lambda t: t ** 3, # in cubic - 9
+  lambda t: 1 - (1 - t) ** 4, # out quart - 10
+  lambda t: t ** 4, # in quart - 11
+  lambda t: 4 * (t ** 3) if t < 0.5 else 1 - (-2 * t + 2) ** 3 / 2, # io cubic - 12
+  lambda t: 8 * (t ** 4) if t < 0.5 else 1 - (-2 * t + 2) ** 4 / 2, # io quart - 13
+  lambda t: 1 - (1 - t) ** 5, # out quint - 14
+  lambda t: t ** 5, # in quint - 15
+  lambda t: 1 if t == 1 else 1 - 2 ** (-10 * t), # out expo - 16
+  lambda t: 0 if t == 0 else 2 ** (10 * t - 10), # in expo - 17
+  lambda t: (1 - (t - 1) ** 2) ** 0.5, # out circ - 18
+  lambda t: 1 - (1 - t ** 2) ** 0.5, # in circ - 19
+  lambda t: 1 + 2.70158 * ((t - 1) ** 3) + 1.70158 * ((t - 1) ** 2), # out back - 20
+  lambda t: 2.70158 * (t ** 3) - 1.70158 * (t ** 2), # in back - 21
+  lambda t: (1 - (1 - (2 * t) ** 2) ** 0.5) / 2 if t < 0.5 else (((1 - (-2 * t + 2) ** 2) ** 0.5) + 1) / 2, # io circ - 22
+  lambda t: ((2 * t) ** 2 * ((2.5949095 + 1) * 2 * t - 2.5949095)) / 2 if t < 0.5 else ((2 * t - 2) ** 2 * ((2.5949095 + 1) * (t * 2 - 2) + 2.5949095) + 2) / 2, # io back - 23
+  lambda t: 0 if t == 0 else (1 if t == 1 else 2 ** (-10 * t) * math.sin((t * 10 - 0.75) * (2 * math.pi / 3)) + 1), # out elastic - 24
+  lambda t: 0 if t == 0 else (1 if t == 1 else - 2 ** (10 * t - 10) * math.sin((t * 10 - 10.75) * (2 * math.pi / 3))), # in elastic - 25
+  lambda t: 7.5625 * (t ** 2) if (t < 1 / 2.75) else (7.5625 * (t - (1.5 / 2.75)) * (t - (1.5 / 2.75)) + 0.75 if (t < 2 / 2.75) else (7.5625 * (t - (2.25 / 2.75)) * (t - (2.25 / 2.75)) + 0.9375 if (t < 2.5 / 2.75) else (7.5625 * (t - (2.625 / 2.75)) * (t - (2.625 / 2.75)) + 0.984375))), # out bounce - 26
+  lambda t: 1 - (7.5625 * ((1 - t) ** 2) if ((1 - t) < 1 / 2.75) else (7.5625 * ((1 - t) - (1.5 / 2.75)) * ((1 - t) - (1.5 / 2.75)) + 0.75 if ((1 - t) < 2 / 2.75) else (7.5625 * ((1 - t) - (2.25 / 2.75)) * ((1 - t) - (2.25 / 2.75)) + 0.9375 if ((1 - t) < 2.5 / 2.75) else (7.5625 * ((1 - t) - (2.625 / 2.75)) * ((1 - t) - (2.625 / 2.75)) + 0.984375)))), # in bounce - 27
+  lambda t: (1 - (7.5625 * ((1 - 2 * t) ** 2) if ((1 - 2 * t) < 1 / 2.75) else (7.5625 * ((1 - 2 * t) - (1.5 / 2.75)) * ((1 - 2 * t) - (1.5 / 2.75)) + 0.75 if ((1 - 2 * t) < 2 / 2.75) else (7.5625 * ((1 - 2 * t) - (2.25 / 2.75)) * ((1 - 2 * t) - (2.25 / 2.75)) + 0.9375 if ((1 - 2 * t) < 2.5 / 2.75) else (7.5625 * ((1 - 2 * t) - (2.625 / 2.75)) * ((1 - 2 * t) - (2.625 / 2.75)) + 0.984375))))) / 2 if t < 0.5 else (1 +(7.5625 * ((2 * t - 1) ** 2) if ((2 * t - 1) < 1 / 2.75) else (7.5625 * ((2 * t - 1) - (1.5 / 2.75)) * ((2 * t - 1) - (1.5 / 2.75)) + 0.75 if ((2 * t - 1) < 2 / 2.75) else (7.5625 * ((2 * t - 1) - (2.25 / 2.75)) * ((2 * t - 1) - (2.25 / 2.75)) + 0.9375 if ((2 * t - 1) < 2.5 / 2.75) else (7.5625 * ((2 * t - 1) - (2.625 / 2.75)) * ((2 * t - 1) - (2.625 / 2.75)) + 0.984375))))) / 2, # io bounce - 28
+  lambda t: 0 if t == 0 else (1 if t == 0 else (-2 ** (20 * t - 10) * math.sin((20 * t - 11.125) * ((2 * math.pi) / 4.5))) / 2 if t < 0.5 else (2 ** (-20 * t + 10) * math.sin((20 * t - 11.125) * ((2 * math.pi) / 4.5))) / 2 + 1) # io elastic - 29
+]
+# 名称字典
+easing_dict: dict[int: str] = {
+    0: "Unknown",
+    1: "Linear",
+    2: "Out Sine",
+    3: "In Sine",
+    4: "Out Quad",
+    5: "In Quad",
+    6: "In Out Sine",
+    7: "In Out Quad",
+    8: "Out Cubic",
+    9: "In Cubic",
+    10: "Out Quart",
+    11: "In Quart",
+    12: "In Out Cubic",
+    13: "In Out Quart",
+    14: "Out Quint",
+    15: "In Quint",
+    16: "Out Expo",
+    17: "In Expo",
+    18: "Out Circ",
+    19: "In Circ",
+    20: "Out Back",
+    21: "In Back",
+    22: "In Out Circ",
+    23: "In Out Back",
+    24: "Out Elastic",
+    25: "In Elastic",
+    26: "Out Bounce",
+    27: "In Bounce",
+    28: "In Out Bounce",
+    29: "In Out Elastic"
+}
+# 反查字典
+reverse_easing_dict = {value: key for key, value in easing_dict.items()}
+
 
 
 class LineTimer:
@@ -9,6 +83,7 @@ class LineTimer:
         self.endValueList: list[float] = []
         self.startTimeList: list[float] = []
         self.startValueList: list[float] = []
+        self.easingTypeList: list[int] = []
         self.defaultValue = defaultValue
 
     def __call__(self, time_: float):
@@ -26,6 +101,7 @@ class LineTimer:
         result.endValueList = copy.deepcopy(self.endValueList, memo)
         result.startTimeList = copy.deepcopy(self.startTimeList, memo)
         result.startValueList = copy.deepcopy(self.startValueList, memo)
+        result.easingTypeList = copy.deepcopy(self.easingTypeList, memo)
         return result
 
     def second(self, time_, baseBPM=None):
@@ -46,18 +122,20 @@ class LineTimer:
         else:
             return self.defaultValue
 
-    def addPeriod(self, startTime, endTime, startValue, endValue):
+    def addPeriod(self, startTime, endTime, startValue, endValue, easingType=1):
         if startTime > endTime:
             raise ValueError(f"EndTime must be later than startTime. {startTime} vs {endTime}")
         self.endTimeList.append(endTime)
         self.endValueList.append(endValue)
         self.startTimeList.append(startTime)
         self.startValueList.append(startValue)
+        self.easingTypeList.append(easingType)
         return self
 
-    def addEvent(self, endTime, endValue):
+    def addEvent(self, endTime, endValue, easingType=1):
         self.endTimeList.append(endTime)
         self.endValueList.append(endValue)
+        self.easingTypeList.append(easingType)
         self.startTimeList.append(self.latestTimeT())
         self.startValueList.append(self.latestValue())
 
@@ -66,6 +144,7 @@ class LineTimer:
         self.endValueList.pop(index)
         self.startTimeList.pop(index)
         self.startValueList.pop(index)
+        self.easingTypeList.pop(index)
 
     def max(self):
         m1 = max(self.startValueList)
@@ -121,6 +200,7 @@ class LineTimer:
             if start_t == end_t:
                 return start_v  # 处理零长度区间
             ratio = (time - start_t) / (end_t - start_t)
+            ratio = ease_funcs[self.easingTypeList[found_index]](ratio)
             return start_v + ratio * (end_v - start_v)
         else:
             # 区间外处理：第一个区间前返回默认值，其他返回上一个区间的末值
@@ -169,9 +249,10 @@ class ColorLineTimer(LineTimer):
         self.endValueList = []
         self.startTimeList = []
         self.startValueList = []
+        self.easingTypeList = []
         self.defaultValue: list[int] = defaultValue
 
-    def addPeriod(self, startTime, endTime, startValue, endValue):
+    def addPeriod(self, startTime, endTime, startValue, endValue, easingType=1):
         print("add new period", startValue, endValue)
         if startTime > endTime:
             raise ValueError(f"EndTime must be later than startTime. {startTime} vs {endTime}")
@@ -179,6 +260,7 @@ class ColorLineTimer(LineTimer):
         self.endValueList.append(endValue)
         self.startTimeList.append(startTime)
         self.startValueList.append(startValue)
+        self.easingTypeList.append(easingType)
         return self
 
     @property
@@ -624,7 +706,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": lineTimer.endValueList[i] * 9/2,
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -640,7 +722,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": (lineTimer.endValueList[i]-0.5)*1350,
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -656,7 +738,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": (lineTimer.endValueList[i]-0.5)*900,
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -672,7 +754,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": int(lineTimer.endValueList[i]*255),
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -688,7 +770,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": lineTimer.endValueList[i],
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -706,7 +788,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": lineTimer.endValueList[i],
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -724,7 +806,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": lineTimer.endValueList[i],
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -743,7 +825,7 @@ class Line:
                 "bezierPoints": [0.0, 0.0, 0.0, 0.0],
                 "easingLeft": 0.0,
                 "easingRight": 1.0,
-                "easingType": 1,
+                "easingType": lineTimer.easingTypeList[i],
                 "end": 360-lineTimer.endValueList[i],
                 "endTime": self.timeTtoBeat(lineTimer.endTimeList[i]),
                 "linkgroup": 0,
@@ -794,21 +876,23 @@ class RPELine(Line):
     def rotate(self, timeT: float) -> float:
         return sum([layer.rotate(timeT) for layer in self.eventLayers])
 
-    def pos(self, timeT: float) -> float:
-        if timeT > self.lastTime:
+    def pos(self, timeT: float, forceRecalc=False) -> float:
+        if timeT >= self.lastTime:
             pos = self.lastPos
             t = self.lastTime
         else:
             pos = 0
             t = 0
+            if not forceRecalc:
+                raise ValueError
         while t < timeT:
-            t += 1
+            t += 0.1
+            pos += 0.1 * self.speed(t) * 1.875 / self.bpm
             if t < timeT:
-                pos += self.speed(t) * 1.875 / self.bpm
                 self.lastPos = pos
                 self.lastTime = t
             else:
-                return pos + (timeT%1) * self.speed(t) * 1.875 / self.bpm
+                return pos + (timeT%0.1) * self.speed(t) * 1.875 / self.bpm
 
 
 class EventLayer:

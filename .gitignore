@@ -5,4 +5,5 @@ output
 build
 dist
 tk/projects
+charts
 launcher.spec

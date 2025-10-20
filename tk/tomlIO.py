@@ -9,6 +9,7 @@ def lineTimer2tml(lineTimer: LineTimer):
         "endValueList": lineTimer.endValueList,
         "startTimeList": lineTimer.startTimeList,
         "startValueList": lineTimer.startValueList,
+        "easingTypeList": lineTimer.easingTypeList,
         "defaultValue": lineTimer.defaultValue
     }
 
@@ -105,6 +106,10 @@ def toml2linetimer(dic: dict):
     lineTimer.endValueList = dic["endValueList"]
     lineTimer.startTimeList = dic["startTimeList"]
     lineTimer.startValueList = dic["startValueList"]
+    if "easingTypeList" in dic:
+        lineTimer.easingTypeList = [max(int(i), 1) for i in dic["easingTypeList"]]
+    else:
+        lineTimer.easingTypeList = [1 for i in range(len(lineTimer.startValueList))]
     lineTimer.defaultValue = dic["defaultValue"]
     return lineTimer
 

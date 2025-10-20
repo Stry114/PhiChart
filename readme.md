@@ -28,8 +28,10 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
  - Player3D类在Player类的基础上实现了更多功能。
 
 ## Player类接口与功能清单
-### 接口
-|成员/方法|描述|在Player类中的描述|在Player3D类中的描述|默认值|数据类型|
+### 成员变量表
+此表列出了所有public成员，不在此表列中的接口应被视为priveta。
+
+|成员|描述|在Player类中的描述|在Player3D类中的描述|默认值|数据类型|
 |---|---|---|---|---|---|
 |`width`|窗口宽度，像素|||1200|`int`|
 |`height`|窗口高度，像素||默认值为800|600|`int`|
@@ -37,9 +39,9 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
 |`lineWidth`|判定线宽度|||0.006*屏幕高度|`float`|
 |`noteSize`|键的宽度|||屏幕宽度/8|`float`|
 |`hitEffectSize`|打击特效的宽度和高度|||屏幕宽度/6|`float`|
-|`subtitle`|连击数下方的字||||`str`|
-|`level`|右下角的字||||`str`|
-|`name`|左下角的字||||`str`|
+|`subtitle`|连击数下方的字|||"AUTOPLAY"|`str`|
+|`level`|右下角的字|||"Un Lv.?"|`str`|
+|`name`|左下角的字|||"Unknown"|`str`|
 |`displayDebug`|是否显示调试信息，可能影响性能|||false|`bool`|
 |`displayUI`|是否显示UI。当此值为false时，`displayDebug`值失效|||true|`bool`|
 |`doubleHitEffect`|是否高亮显示双押|||true|`bool`|
@@ -52,17 +54,26 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
 |`enable3D`|启用立体事件；此值为False时，与本家无异|默认值为False；当此值为True时，所有键的下落方向改为z轴向外|默认值为True；当此值为True时，启用PhiChart新增的theta、moveZ、angle三个立体事件||`bool`|
 |`speed3D`|流速倍率|仅在`enable3D`为True时生效|一直生效|1.0|`float`|
 |`boundary`|z轴渲染的最远距离。启用3D后，此值为键出现的位置|||3*屏幕高度|`float`|
-|`cmrPos`|摄像机位置，向量|无此值||屏幕中央|自定义类`vec3D.V3d`|
+|`cmrPos`|摄像机位置，向量|无此值||屏幕中央|`libs.vec3D.V3d`|
 |`FOV`|视角大小，弧度制|无此值||待补充|`float`|
 |`FL`|摄像机最近成像距离|无此值||待补充|`float`|
-|`enableCompiler`|||||``|
-|``|||||``|
-|``|||||``|
-|``|||||``|
-|``|||||``|
-|``|||||``|
-|``|||||``|
-|``|||||``|
+|`enableCompiler`|启用转谱；此值为True时，将会生成一个可以导入模拟器中游玩的zip包||暂不支持|False|`bool`|
+|`matcher`|Matcher对象，用于自动匹配指定文件路径下的Json、曲绘和音频文件|||None|`libs.autoMatch.Matcher`|
+|`illuFile`|手动指定曲绘文件。matcher不为None时，无需再设置此值|||None|`str`|
+|`chartFile`|手动指定Json文件。matcher不为None时，无需再设置此值|||None|`str`|
+|`audioFile`|手动指定音频文件。matcher不为None时，无需再设置此值|||None|`str`|
+|~~`chart`~~|手动指定Chart对象。Chart对象应由analyzer产生或手动创建空白对象。此接口已废弃，可能引发未知的Bug|||None|`libs.chart.Chart`|
+|`enableNewVision`|启用新视野；此值为True时，谱面被缩放到屏幕下方以实现ELEVATED效果|||False|`bool`|
+
+### 函数表
+此表列出了所有public函数，不在此表列中的函数应被视为priveta。
+
+|函数/方法|描述|在Player类中的描述|在Player3D类中的描述|
+|---|---|---|---|
+|`setCmrDir(dir: V3d, x_angle_inc=0)`|设置摄像机朝向，仅在启用3D时生效|无此接口||
+|`initPlayer()`|初始化播放器；内含加载谱面、初始化Pygame、预渲染Note贴图，必须在主循环前调用||
+|`mainloop()`|主循环；播放谱面并阻塞线程||
+|`outputChart()`|导出一个可导入模拟器的zip包；即将被废弃此接口，不建议调用||
 
 
 

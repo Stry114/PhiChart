@@ -192,6 +192,9 @@ class Event:
     def ev(self):
         return self.lineTimer.endValueList[self.index]
 
+    def easing(self):
+        return self.lineTimer.easingTypeList[self.index]
+
     def setSt(self, st):
         self.lineTimer.startTimeList[self.index] = st
 
@@ -203,6 +206,9 @@ class Event:
 
     def setEv(self, ev):
         self.lineTimer.endValueList[self.index] = ev
+
+    def setEasing(self, easing: int):
+        self.lineTimer.easingTypeList[self.index] = easing
 
 class Arange:
     def __init__(self, start, stop, step):
@@ -1105,7 +1111,6 @@ class TimelineEditor:
     def ban3D(self, *args):
 
         # 撤销记录
-        print("here")
         self.record("启用/禁用3D")
 
         for obj in self.selected:
@@ -1624,11 +1629,24 @@ class TimelineEditor:
             else:
                 raise ValueError(f"Unknown handle type {handle.type_}")
 
+        # 处理缓动
+        if 0 <= handle.lineTimer.easingTypeList[handle.index] <= 1:
+            points = [handle.x1, handle.y1, handle.x2, handle.y2]
+        else:
+            easing = handle.lineTimer.easingTypeList[handle.index]
+            points = []
+            size = int((handle.y1 - handle.y2) // 3)
+            for i in range(size + 1):
+                r = ease_funcs[easing](i / size)
+                x = r * handle.x2 + (1 - r) * handle.x1
+                y = (i / size) * handle.y2 + (1 - i / size) * handle.y1
+                points.append(x)
+                points.append(y)
+
         for obj in self.selected:
             if isinstance(obj, Event) and obj.isHandle(handle):
                 self.canvas.create_line(
-                    handle.x1, handle.y1,
-                    handle.x2, handle.y2,
+                    *points,
                     fill="#ddd",
                     width=6,
                 )
@@ -1647,12 +1665,13 @@ class TimelineEditor:
                     width=0,
                 )
 
+        # 绘制线条
         self.canvas.create_line(
-            handle.x1, handle.y1,
-            handle.x2, handle.y2,
+            *points,
             fill=color,
             width=3,
         )
+
         if handle == self.curvingHandle:
             if self.acr1T is not None:
                 # 画两个锚点
@@ -1784,6 +1803,21 @@ class TimelineEditor:
 
         l = self.w0*((index+0.7)/8)
         r = self.w0*((index+1.3)/8)
+
+        points = []
+        easingType = handle.lineTimer.easingTypeList[handle.index]
+        if easingType <= 1:
+            points = [l+(r-l)*handle.x1/self.w0, handle.y1, l+(r-l)*handle.x2/self.w0, handle.y2]
+        else:
+            size = int((handle.y1 - handle.y2) // 3)
+            for i in range(size + 1):
+                ratio = ease_funcs[easingType](i / size)
+                x = l+(r-l)*(ratio * handle.x2 + (1 - ratio) * handle.x1)/self.w0
+                y = (i / size) * handle.y2 + (1 - i / size) * handle.y1
+                points.append(x)
+                points.append(y)
+
+
         self.canvas.create_rectangle(
             l, handle.y1,
             r, handle.y2,
@@ -1796,8 +1830,7 @@ class TimelineEditor:
             fill=color,
         )
         self.canvas.create_line(
-            l+(r-l)*handle.x1/self.w0, handle.y1,
-            l+(r-l)*handle.x2/self.w0, handle.y2,
+            *points,
             fill=color, width=3
         )
 
@@ -2175,7 +2208,10 @@ class TimelineEditor:
                 if not handle.y2 <= event.y <= handle.y1:
                     d = float('inf')
                 else:
-                    xp = (event.y - handle.y1) / (handle.y2 - handle.y1) * (handle.x2 - handle.x1) + handle.x1
+                    easingType = handle.lineTimer.easingTypeList[handle.index]
+                    r = (event.y - handle.y1) / (handle.y2 - handle.y1)
+                    r = ease_funcs[easingType](r) if easingType >= 2 else r
+                    xp = r * (handle.x2 - handle.x1) + handle.x1
                     d = abs(event.x - xp)
             if d < minDistance:
                 minDistance = d
@@ -3476,6 +3512,7 @@ Illustrator: {self.chart.illustration}"""
         noteWin.title("键属性")
         noteWin.config(padx=30, pady=30, bg="#222")
         noteWin.attributes("-toolwindow", True)
+        noteWin.attributes("-topmost", True)
         noteWin.minsize(400, 700)
 
         if event is not None:
@@ -3625,6 +3662,7 @@ Illustrator: {self.chart.illustration}"""
         self.root = Toplevel()
         self.root.title("事件属性")
         self.root.config(padx=30, pady=30, bg="#222")
+        self.root.attributes("-topmost", True)
         self.root.attributes("-toolwindow", True)
         self.root.minsize(400, 500)
 
@@ -3745,6 +3783,7 @@ Illustrator: {self.chart.illustration}"""
                 et2.insert(0, event.lineTimer.endTimeList[event.index])
                 et3.insert(0, event.lineTimer.startValueList[event.index])
                 et4.insert(0, event.lineTimer.endValueList[event.index])
+                et5.setValue(event.easing())
 
         def submitEventAttribute(*event):
             self.record("编辑事件属性")
@@ -3798,9 +3837,17 @@ Illustrator: {self.chart.illustration}"""
                     for event in self.selected:
                         event.setEv(float(et4.get()))
 
+            for event in self.selected:
+                event.setEasing(int(et5.getValue()))
             self.calcHandle()
             self.update()
             self.root.destroy()
+
+        def updateLb6(*args):
+            for event in self.selected:
+                event.setEasing(int(et5.getValue()))
+            self.update()
+            lb6.config(text=easing_dict[et5.getValue()])
 
         lf1 = LabelFrameDark(self.root, text="原生属性", padx=10, pady=10)
         lf1.pack(side=TOP, fill=X)
@@ -3832,8 +3879,15 @@ Illustrator: {self.chart.illustration}"""
         et4 = EntryDark(lf1)
         et4.pack(side=TOP, fill=X)
 
-        lb8 = LabelDark(lf2, anchor=CENTER, text="抱歉暂不支持。\n作者写代码写傻了")
-        lb8.pack(side=TOP, fill=X)
+        lb5 = LabelDark(lf2, anchor=W, text="缓动编号")
+        lb5.pack(side=TOP, fill=X)
+        lb6 = LabelDark(lf2, anchor=W, text="Unknown")
+        lb6.pack(side=TOP, fill=X)
+        et5 = LiIntEntryDark(lf2, min=0, max=29, command=updateLb6)
+        et5.pack(side=TOP, fill=X)
+
+        # lb8 = LabelDark(lf2, anchor=CENTER, text="抱歉暂不支持。\n作者写代码写傻了")
+        # lb8.pack(side=TOP, fill=X)
 
         bt2 = ButtonDark(self.root, text="确认", command=submitEventAttribute, height=2)
         bt2.pack(side=BOTTOM, fill=X)
@@ -3842,6 +3896,8 @@ Illustrator: {self.chart.illustration}"""
 
         self.root.bind("<Return>", submitEventAttribute)
         updateEventAttribute()
+        updateLb6()
+
 
 
 
@@ -4032,7 +4088,7 @@ Illustrator: {self.chart.illustration}"""
                 elif self.screenMode is ScreenMode.ROTATE:
                     lineTimer = self.line.rotate
                 else:
-                    print(self.screenMode)
+                    raise ValueError(self.screenMode)
                     return
 
                 matched = []

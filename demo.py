@@ -1,20 +1,20 @@
-from player3D import Player
+from player import Player
 from libs.autoMatch import Matcher
 
 matched = Matcher(r"D:\Projects\PygamePhiChart\charts\轻涟")
-player = Player(matcher=matched, w=1000, h=800, fps=120)
+player = Player(matcher=matched, w=1080, h=720, fps=120)
 # 设置副标题
-player.name = "PhiChart Project Preview"
-player.level = "IN Lv.?"
+player.name = "The Chariot ~REVIIVAL~"
+player.level = "AT Lv.15"
 player.subtitle = "ELEVATED"
 
 
 # 启用3D
-player.displayDebug = True
+player.displayDebug = False
 player.enable3D = False
-player.enableNewVision = False
-player.displacementY = 1.0
-player.enableMapping = False
+player.enableNewVision = True
+player.displacementY = 0.7
+player.enableMapping = True
 # 设置摄像机位置，推荐处于中间偏上的位置
 player.cmrY = player.height * 0.1
 player.cmrX = player.width * 0.5

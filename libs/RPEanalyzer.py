@@ -59,6 +59,7 @@ def analyzeJson(jsonFile: str):
                         float(beatToTimeT(event["endTime"], line)),
                         float(event["start"])/1350+0.5,
                         float(event["end"])/1350+0.5,
+                        int(event["easingType"]),
                     )
             if "moveYEvents" in line_["eventLayers"][i]:
                 for event in line_["eventLayers"][i]["moveYEvents"]:
@@ -67,6 +68,7 @@ def analyzeJson(jsonFile: str):
                         float(beatToTimeT(event["endTime"], line)),
                         float(event["start"])/900+0.5,
                         float(event["end"])/900+0.5,
+                        int(event["easingType"]),
                     )
 
             # rotate event
@@ -77,6 +79,7 @@ def analyzeJson(jsonFile: str):
                         float(beatToTimeT(event["endTime"], line)),
                         360-float(event["start"]),
                         360-float(event["end"]),
+                        int(event["easingType"]),
                     )
 
             # alpha event
@@ -87,6 +90,7 @@ def analyzeJson(jsonFile: str):
                         float(beatToTimeT(event["endTime"], line)),
                         float(event["start"])/255,
                         float(event["end"])/255,
+                        int(event["easingType"]),
                     )
 
         # scale X event
@@ -97,6 +101,7 @@ def analyzeJson(jsonFile: str):
                     float(beatToTimeT(event["endTime"], line)),
                     float(event["start"]),
                     float(event["end"]),
+                    int(event["easingType"]),
                 )
 
         # scale Y event
@@ -107,6 +112,7 @@ def analyzeJson(jsonFile: str):
                     float(beatToTimeT(event["endTime"], line)),
                     float(event["start"]),
                     float(event["end"]),
+                    int(event["easingType"]),
                 )
 
         # scale Y event
@@ -117,6 +123,7 @@ def analyzeJson(jsonFile: str):
                     float(beatToTimeT(event["endTime"], line)),
                     event["start"],
                     event["end"],
+                    int(event["easingType"]),
                 )
 
             # note
@@ -124,9 +131,9 @@ def analyzeJson(jsonFile: str):
             for note_ in line_["notes"]:
                 timeT_1 = beatToTimeT(note_['startTime'], line)
                 timeT_2 = beatToTimeT(note_['endTime'], line)
-                above = True if note_['above'] else False
-                floorPos = line.pos(timeT_1)
-                floorPosT = line.pos(timeT_2)
+                above = True if note_['above']==1 else False
+                floorPos = line.pos(timeT_1, True)
+                floorPosT = line.pos(timeT_2, True)
 
                 note = ch.Note(
                     above=above,

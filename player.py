@@ -546,7 +546,7 @@ class Player:
         Vcos = math.cos(math.radians(r))
 
         dx = note.posX * self.X
-        dy = note.speed * (note.floorPos - line.pos(note.time_)) * self.Y
+        dy = 0
 
         if note.above:
             xn = x + dx * Vcos - dy * Vsin
@@ -635,9 +635,13 @@ class Player:
         self.hitBlockCost = mytimer("特效方块")
 
         for line in self.chart.lineList:
+            line.alpha1 = line.alpha(self.timeT)
+        self.chart.lineList.sort(key=lambda line: line.alpha1)
+
+        for line in self.chart.lineList:
             x = line.move1(self.timeT) * self.width
             y = line.move2(self.timeT) * self.height * self.displacementY
-            a = line.alpha(self.timeT)
+            a = line.alpha1
             r = line.rotate(self.timeT)
             Vsin = math.sin(math.radians(r))
             Vcos = math.cos(math.radians(r))
@@ -677,7 +681,7 @@ class Player:
             y_min = min(y1, y2)
             y_max = max(y1, y2)
 
-            skip = max(x_min, 0) > min(x_max, self.width) or max(y_min, 0) > min(y_max, self.height)
+            skip = max(x_min, 0) > min(x_max, self.width) or max(y_min, self.height*(1-self.displacementY) if self.enableNewVision else 0) > min(y_max, self.height)
             skip = skip or line.attachUI is not None
 
             if not skip and a > 0.01:
@@ -703,7 +707,7 @@ class Player:
 
             Vsin = math.sin(math.radians(r))
             Vcos = math.cos(math.radians(r))
-            pos = line.pos(self.timeT)
+            pos = line.pos(self.timeT, True)
 
             # 统计线上此帧的note数字
             line.noteFrameCount = 0
@@ -767,24 +771,27 @@ class Player:
                     ynt = y + dxt * Vsin - dyt * Vcos
 
                 # 根据时间判断，跳过渲染还是添加特效
-                frameDelta = 0.5 / self.FPS * self.BPM / 1.875 * 0
-
-                if note.time_ < self.timeT + frameDelta < note.time_ + note.holdTime:
-                    if self.frameIndex % 15 == 0:
-                        effect = HitEffect(xn, yn)
-                        self.hitEffectList.append(effect)
-
-                elif note.time_ + note.holdTime < self.timeT + frameDelta:
-                    note.hit = True
-                    self.combo += 1
-                    self.score += 1 * 10 ** 6 / self.chart.noteCount
-
+                # frameDelta = 0.5 / self.FPS * self.BPM / 1.875 * 0
+                #
+                # if note.time_ < self.timeT + frameDelta < note.time_ + note.holdTime:
+                #     if self.frameIndex % 15 == 0:
+                #         effect = HitEffect(xn, yn)
+                #         self.hitEffectList.append(effect)
+                #
+                # elif note.time_ + note.holdTime < self.timeT + frameDelta:
+                #     note.hit = True
+                #     self.combo += 1
+                #     self.score += 1 * 10 ** 6 / self.chart.noteCount
+                #
+                #     effect = HitEffect(xn, yn)
+                #     self.hitEffectList.append(effect)
+                #
+                # if note.time_ < self.timeT + frameDelta and not note.begin:
+                #     note.begin = True
+                #     self.tapSound.play()
+                if self.frameIndex % 16 == 0 and note.time_ < self.timeT < note.time_ + note.holdTime:
                     effect = HitEffect(xn, yn)
                     self.hitEffectList.append(effect)
-
-                if note.time_ < self.timeT + frameDelta and not note.begin:
-                    note.begin = True
-                    self.tapSound.play()
 
                 if note.alpha == 0:
                     continue
@@ -882,26 +889,26 @@ class Player:
                     yn = y + dx * Vsin - dy * Vcos
 
                 # 根据时间判断，跳过渲染还是添加特效
-                frameDelta = 0.5 / self.FPS * self.BPM / 1.875 * 0
-                if note.time_ < self.timeT + frameDelta:
-                    effect = HitEffect(*self.getNoteHitPos(line, note))
-                    self.hitEffectList.append(effect)
-                    note.hit = True
-                    self.combo += 1
-                    self.score += 1 * 10 ** 6 / self.chart.noteCount
-
-                    # 播放音效
-                    if note.type_ == 1:
-                        self.tapSound.play()
-                    elif note.type_ == 2:
-                        self.dragSound.play()
-                    elif note.type_ == 4:
-                        self.flickSound.play()
-
-                    if note.tempLine is not None:
-                        self.freeTempLine(note)
-                        note.tempLine = None
-                    continue
+                # frameDelta = 0.5 / self.FPS * self.BPM / 1.875 * 0
+                # if note.time_ < self.timeT + frameDelta:
+                #     effect = HitEffect(*self.getNoteHitPos(line, note))
+                #     self.hitEffectList.append(effect)
+                #     note.hit = True
+                #     self.combo += 1
+                #     self.score += 1 * 10 ** 6 / self.chart.noteCount
+                #
+                #     # 播放音效
+                #     if note.type_ == 1:
+                #         self.tapSound.play()
+                #     elif note.type_ == 2:
+                #         self.dragSound.play()
+                #     elif note.type_ == 4:
+                #         self.flickSound.play()
+                #
+                #     if note.tempLine is not None:
+                #         self.freeTempLine(note)
+                #         note.tempLine = None
+                #     continue
 
                 if note.alpha == 0:
                     continue
@@ -1676,7 +1683,6 @@ class Player:
 
         # 计时器，用于评估性能
         timer = time.time()
-        self.timeCost = 10 ** -6
         delta = 10 ** -6
 
         # 用于统计平均帧数
@@ -1686,7 +1692,7 @@ class Player:
 
         # 计算铺面延迟
         self.timeS = - self.chartDelay + self.startTimeS
-        self.timeS -= self.chart.offset/1000
+        self.timeS -= self.chart.offset / 1000
         self.timeT = self.timeS * self.BPM / 1.875
 
         # 播放bgm
@@ -1695,14 +1701,15 @@ class Player:
         pygame.mixer.music.set_pos(self.startTimeS)
 
         # 处理startTimeS前的所有note
-        for line in self.chart.lineList:
-            for note in line.noteList:
-                if note.time_ < self.timeT:
-                    note.hit = True
-                    self.combo += 1
+        for note in self.chart.noteList:
+            if note.time_ < self.timeT:
+                note.hit = True
+                self.combo += 1
+                self.score += 1 * 10 ** 6 / self.chart.noteCount
 
         while running:
-            # 处理事件
+
+            ### 处理事件 ###
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -1710,17 +1717,14 @@ class Player:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.pause = not self.pause
-
             if self.pause:
                 clock.tick(self.FPS)
                 continue
-
             if self.timeS > self.waveDurationS:
                 running = False
                 break
 
-            # 清空屏幕（用白色填充）
-            # 绘制当前帧的所有内容
+            ### 渲染画面 ###
             try:
                 self.screen.fill(self.WHITE)
                 if self.timeT > 0:
@@ -1731,27 +1735,60 @@ class Player:
                 traceback.print_exc()
                 print(f"Render Error at timeT={self.timeT}, timeS={self.timeS}")
 
-            # 3. 更新显示
             self.screen.blit(self.background_layer, (0, 0))
             self.screen.blit(self.foreground_layer, (0, 0))
             pygame.display.flip()
 
+            ### 更新计时器
+            current = time.time()
+            delta = current - timer
+            deltaT = delta * self.BPM / 1.875
+            # 统计帧数
+            frameCount += 1
+            self.frameIndex += 1
+            if timer // 1 != current // 1:
+                self.secondCount = frameCount
+                frameCount = 0
+
+            ### 键打击判定
+            for line in self.chart.lineList:
+                for note in line.noteList:
+                    if note.type_ != 3:
+                        if self.timeT < note.time_ < self.timeT + deltaT:
+                            xn, yn = self.getNoteHitPos(line, note)
+                            note.hit = True
+                            self.combo += 1
+                            self.score += 1 * 10 ** 6 / self.chart.noteCount
+                            if xn is not None and yn is not None:
+                                effect = HitEffect(xn, yn)
+                                self.hitEffectList.append(effect)
+
+                            if note.type_ == 1:
+                                self.tapSound.play()
+                            elif note.type_ == 2:
+                                self.dragSound.play()
+                            elif note.type_ == 4:
+                                self.flickSound.play()
+                    else:
+                        if self.timeT < note.time_ < self.timeT + deltaT:
+                            self.tapSound.play()
+                            xn, yn = self.getNoteHitPos(line, note)
+                            if xn is not None and yn is not None:
+                                effect = HitEffect(xn, yn)
+                                self.hitEffectList.append(effect)
+                        if self.timeT < note.time_ + note.holdTime < self.timeT + deltaT:
+                            note.hit = True
+                            self.combo += 1
+                            self.score += 1 * 10 ** 6 / self.chart.noteCount
+
+            ### 帧率控制 阻塞线程
+
+            clock.tick(self.FPS)
             if self.enableCompiler:
                 self.timeS += 1 / self.FPS
                 self.timeT = self.timeS * self.BPM / 1.875
             else:
-                # 控制帧率
-                self.timeCost = time.time() - timer + 1e-6
-                clock.tick(self.FPS)
-                # 统计帧数
-                frameCount += 1
-                self.frameIndex += 1
-                if timer // 1 != time.time() // 1:
-                    self.secondCount = frameCount
-                    frameCount = 0
-
-                current = time.time()
-                delta = current - timer
+                # 同步时间变量
                 timer = current
                 self.timeS += delta * self.speed
                 self.timeT = self.timeS * self.BPM / 1.875
