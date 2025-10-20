@@ -6,24 +6,44 @@ A Phigros emulator based on python pygame.
 
 Player提供了丰富的自定义参数，允许用户实现各种奇特的功能，诸如谱面解密、竖屏模式等。
 
-# 依赖
- - pygame
- - numpy
 
-# PhiChart启动器
-转到右侧`Release`下载启动器，打开启动器。
-![](readme/new_launcher.png)
+# RPE谱面兼容性说明
+当前版本的 PhiChart Player 与 PhiChart Editor 实现了对RPE谱面格式的部分兼容。
+请注意，PhiChart Editor 暂不支持打开 RPE Json 文件，但可以在其创建的项目中使用部分的 RPE 功能。
+|RPE新增功能|PhiChart Player 兼容情况|PhiChart Editor 兼容情况|字段名称||
+|---|---|---|---|---|
+|动态BPM|不支持|不支持|`BPMList`|对于官谱格式，将使用0号线的bpm作为全局BPM；RPE的判定线无独立的BPM|
+|Json自带的元数据|支持|支持|`META`|在播放时，元数据不会覆盖手动指定的曲名、难度等信息；编辑器导出的Json中，RPEVersion被标记为160；此值对播放器不产生任何影响。|
+|判定线组|不读取|不支持|`judgeLineGroup`||
+|判定线名称|不读取|不支持|`Name`||
+|判定线贴图|不读取|不支持|`Texture`||
+|事件层|支持|不支持|`eventLayers`|正在适配中|
+|父线|不支持|不支持|`father`||
+|遮罩|不支持|不支持|`cover`||
+|图层|不支持|不支持|`zOrder`|线的渲染顺序由当时的透明度决定|
+|绑定UI|线将被隐藏|不支持|`attachUI`||
+|GIF贴图|未知|未知|`isGIF`|取决于Pygame|
+|控制Controls|不支持|不支持|---|正在适配中|
+|BPM因子|不支持|不支持|`bpmfactor`|正在适配中|
+|反向下落|支持|支持|`above`||
+|透明度|支持|支持|`alpha`|即将推出的新播放器不支持（Player3D.py)|
+|假键|支持|支持|`isFake`|即将推出的新播放器不支持（Player3D.py)|
+|可见时长|支持|支持|`visibleTime`|即将推出的新播放器不支持（Player3D.py)|
+|Note的y轴偏移|不支持|不支持|`yOffset`||
+|自定义下落音效|不支持|不支持|`hitsound`||
+|Note自定义颜色|不支持|不支持|`color`||
+|贝塞尔缓动|不支持|不支持|`bezier`|正在适配中|
+|缓动|支持|支持|`easingType`||
+|颜色事件|支持|只读|`colorEvents`||
+|X缩放事件|支持|只读|`scaleXEvents`||
+|Y缩放事件|支持|只读|`scaleXEvents`||
+|文本事件|不支持|不支持|`textEvents`||
+|~~绘图事件~~|不支持|不支持|~~`paintEvents`~~|此项目已被RPE废弃|
+|~~倾斜事件~~|不支持|不支持|~~`inclineEvents`~~|此项目已被RPE废弃，但PhiChart使用theta事件替代了此功能|
 
-# 3D转谱器
-1. 转到右侧`Release`下载启动器，打开启动器。
-2. 勾选 `立体转谱与RPE选项` 中的 `启用转谱`。
-3. 解压谱面压缩包，点击 `打开文件夹` 并选中所在目录。
-4. 填写 `谱面信息` 和 `立体转谱与RPE选项` 中的各项信息。
-5. 点击 `开始`，静待转谱完成。
-![](readme/compiling.png)
 
 
-# 编写启动脚本
+# 编写自定义的启动脚本
  - Player类提供了丰富的自定义参数，允许用户实现各种奇特的功能。
  - Player3D类在Player类的基础上实现了更多功能。
 
@@ -78,104 +98,14 @@ Player提供了丰富的自定义参数，允许用户实现各种奇特的功�
 
 
 ## 启动脚本示例
-### 1. 默认参数
-打开`demo.py`
+
+以下是启用立体效果的脚本示例代码。
 
 ```python
-from player3D import Player
+from player import Player
 from libs.autoMatch import Matcher
 
-player = Player(Matcher("charts/rr/"))
-player.initPlayer()
-player.mainloop()
-```
-向Matcher传入所在的谱面文件夹即可打开。
-在进入主循环前，应当先执行`Player.initPlayer()`函数。
-
-### 2. 自定义分辨率
-```python
-player = Player(Matcher("charts/rr/"), w=1200, h=600)
-```
-通过在参数中加入**长度**和**宽度**来设置分辨率。将长度和宽度交换即可实现**竖屏显示**。
-
- - 过大的渲染面积可能导致性能受限。
- - 某些过于奇特的显示比例可能导致note的大小显得有些奇怪。可以通过以下代码来设置note的大小。在横屏模式下，note的大小为窗口宽度的1/8时最合适，在竖屏模式下，note的大小为窗口宽度的1/4时最合适。
-```python
-(import...)
-
-player = Player(Matcher("charts/rr/"), w=600, h=1200)
-player.noteSize = 150
-player.initPlayer()
-player.mainloop()
-```
- - 同理可以设置特效的大小。
-```python
-(import...)
-
-player = Player(Matcher("charts/rr/"), w=600, h=1200)
-player.hitEffectSize = 200
-player.initPlayer()
-player.mainloop()
-```
-### 2. 自定义帧率
-```python
-player = Player(Matcher("charts/rr/"), fps=120)
-```
- - 击中note特效是固定的42帧。帧数越高，特效越快消失。
- - 推荐帧数范围是60~120帧
-### 3. 自定义标题
-```python
-player = Player(Matcher("charts/rr/"), subtitle="奥托普雷先生", level="SP Lv.18", chartName="歌曲名字")
-```
-歌名、难度、连击数下的那行字都是可以修改的。
-### 4. 自定义谱面延迟
-```python
-player = Player(Matcher("charts/rr/"), chartDelay=0.5)
-```
- - 单位是秒。
-### 5. 调试模式
-```python
-player = Player(Matcher("charts/rr/"), debug=True)
-```
-输出一些debug所需的信息。开启后可能会稍微消耗一些性能。
-### 6. 隐藏UI
-```python
-player = Player(Matcher("charts/rr/"), displayUI=False)
-```
-不再显示任何文字内容。
-### 7. 谱面揭秘功能（映射）
-```python
-player = Player(Matcher("charts/rr/"), enableMapping=True)
-```
-开启后会缩放画面，使得平时处于画面外的内容能够被看到，从而制作出类似“谱面揭秘”的功能。
-
-```python
-from player3D import Player
-from libs.autoMatch import Matcher
-
-player = Player(Matcher("charts/rr/"), w=1200, h=800)
-# player.targetRectOfMapping = (300, 200, 900, 600)  # 此参数暂时受限，不允许自定义
-player.initPlayer()
-player.mainloop()
-```
-通过指定`player.targetRectOfMapping`来设置缩放后的位置。这段代码的意思是将原本整个画面缩放到`(300, 200)`到`(900,600)`围成的矩形范围内。
-运行效果如图：
-![](readme/mapping.png)
-### 8. 背景亮度和模糊半径
-```python
-player = Player(Matcher("charts/rr/"), brightness=0.8, blurRadius=20)
-```
-设置背景图的亮度和模糊程度。
- - 亮度为0（最暗）~1（最亮）
- - 使用的是先压缩，再高斯模糊。
-
-### 8.立体谱面
-以下是示例代码和相关参数的设置。启动器暂未同步此功能。
-
-```python
-from player3D import Player
-from libs.autoMatch import Matcher
-
+# 传入谱面文件所在目录，autoMatch将匹配目录下的Json、曲绘和音频文件
 player = Player(Matcher("charts/白复生 IN"), w=1920, h=1080, fps=90)
 
 # 设置副标题
@@ -192,7 +122,7 @@ player.cmrX = player.width * 0.5
 # 设置键出现的位置，推荐值为3倍屏幕高度
 player.boundary = 3.0 * player.height
 # 设置流速，推荐为3倍速
-player.speed = 3.0
+player.speed3D = 3.0
 
 # 设置键大小和特效大小，由于透视，建议调大一点
 player.noteSize = player.width / 7
@@ -204,18 +134,86 @@ player.mainloop()
 ```
 ![](readme/白复生in.png)
 
-# 此分支
- - 添加了对RPE自制谱的部分支持，自制谱将被尝试转译为官谱后运行。
- - 因此，PhiChart并不支持官谱中所不支持的功能（键透明度、非线性事件、故事版等等），但转译功能将仅作为过渡，后续会逐渐支持各种自制谱功能。
-### 转译器
-转译工作将自动完成，你也可以使用以下代码单独调用转译器：
 
-```python
-from libs.RPEanalyzer import analyzeJson
 
-chart = analyzeJson("xxx/xxx.json（自制谱路径）")
-f = open("xxx/output.json（导出路径）", "w", encoding="utf-8")
-f.write(chart.toJson())
-f.close()
+
+
+# 文件结构
+
+ - demo.py
 ```
+演示脚本。直接运行即可打开 PhiChart Player 播放器。
+内容常常更新，一般是Player的新功能演示。
+```
+
+ - editor Launcher.py
+```
+编辑器的启动器，直接运行即可打开或创建谱面并启动 PhiChart Editor 进行编辑。
+```
+
+ - launcher.py
+```
+播放器的启动器，直接运行即可打开谱面并启动 PhiChart Player 进行播放。
+```
+ - player.py
+```
+播放器的核心代码。内含 Player 类的实现。
+```
+ - Player3D.py
+```
+新的3D播放器核心代码。内含 Player3D 类的实现。
+此播放器支持了自由摄像机、Z轴位移（MoveZ）、下落面倾斜（theta）等新功能。
+尚未投入使用，可通过启动脚本手动调用。
+```
+ - libs/
+```
+此目录下存储了 PhiChart Player 的所依赖的多个类、工具库等。
+```
+ - tk/
+```
+此目录下存储了 PhiChart Editor 的核心代码。
+包含多个类、工具库和编辑器UI等
+```
+ - tk/projects/
+```
+此目录下存储了 PhiChart Editor 创建的项目文件。
+```
+ - assets/
+```
+此目录下存储了 Player 所需的所有资源文件。
+似乎有很多意义不明的垃圾文件可能早已被废弃，但没有删除，算了管他吧。
+```
+ - bin/
+```
+只是存放了一个 ffmpeg.exe 用于在x86环境下处理音频。
+```
+ - script/
+```
+存储了几个可供运行的启动脚本。
+```
+ - chart/
+```
+存储了大量供调试用的谱面文件、曲绘、音频等等。
+主要来自拆包。
+```
+
+# 关于此分支
+ - 添加了对RPE自制谱的部分支持。
+ - 此分支包含一个 3D 制谱器。
+ - 此分支包含两个 3D 播放器。
+
+# 致谢/借物表
+谨在此对所有为 PhiChart 提供设计灵感与帮助的个人和组织表示感谢！
+
+Phigros @Phigros官方  
+https://space.bilibili.com/414149787
+
+ffmpeg.exe   
+https://github.com/FFmpeg/FFmpeg
+
+Re:PhiEdit @cmdysj  
+https://space.bilibili.com/252635690
+
+KipPhiApparatus @Zes-MinKey-Young  
+https://github.com/Zes-MinKey-Young/KipPhiApparatus
 
