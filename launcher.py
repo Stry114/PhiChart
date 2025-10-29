@@ -7,10 +7,12 @@ import traceback
 
 import pygame
 
+import player
 from libs.toolTip import ToolTip
-from player3D import Player
+from player import Player
 from libs.analyzer import analyzeJson
 from libs.autoMatch import Matcher
+import assets.lang.ZH_CN as lang
 
 top = Tk()
 top.title("PhiChart Launcher v0.4 by Stry")
@@ -94,7 +96,7 @@ def runningThread():
         if lb5int1.get() == 1:
             player.enable3D = True
             if lb5et1.get() != "":
-                player.speed = float(lb5et1.get())
+                player.speed3D = float(lb5et1.get())
             if lb5et2.get() != "":
                 player.boundary = float(lb5et2.get())
             if lb5et3.get() != "":
@@ -141,7 +143,9 @@ def runningThread():
         pygame.quit()
 
 def launch(*args):
-    if player.running:
+    try:
+        player.running
+    except NameError:
         messagebox.showerror("PhiChart", "存在其他运行中的实例，请勿重复启动。")
         return
     t1 = threading.Thread(daemon=True, target=runningThread)
@@ -254,6 +258,7 @@ def adjustCmr():
     root.after(500, updateAdjCmr)
 
 def loadTips():
+
     ToolTip(lb5ck1, lang.str8)
     ToolTip(lb5et1, lang.str9)
     ToolTip(lb5et2, lang.str10)

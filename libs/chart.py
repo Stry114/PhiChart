@@ -138,6 +138,7 @@ class LineTimer:
         self.easingTypeList.append(easingType)
         self.startTimeList.append(self.latestTimeT())
         self.startValueList.append(self.latestValue())
+        return self
 
     def popPeriod(self, index: int):
         self.endTimeList.pop(index)
@@ -145,6 +146,7 @@ class LineTimer:
         self.startTimeList.pop(index)
         self.startValueList.pop(index)
         self.easingTypeList.pop(index)
+        return self
 
     def max(self):
         m1 = max(self.startValueList)
@@ -467,7 +469,7 @@ class Line:
         print(" " * 4 * level + f"speed\t{self.speed.peroidCount}\t[{self.speed.min()}, {self.speed.max()}]")
         print(" " * 4 * level + f"rotate\t{self.rotate.peroidCount}\t[{self.rotate.min()}, {self.rotate.max()}]")
 
-    def pos(self, time_):
+    def pos(self, time_, *args):
         pos = 0
         for i in range(len(self.speed.startTimeList)):
             s = self.speed.startTimeList[i]
@@ -854,6 +856,11 @@ class RPELine(Line):
         self.theta = LineTimer(bpm, 0.0)
         self.scaleX = LineTimer(bpm, 1.0)
         self.scaleY = LineTimer(bpm, 1.0)
+        # Controls 控制
+        self.alphaControl = LineTimer(bpm, 1.0)
+        self.sizeControl = LineTimer(bpm, 1.0)
+        self.posControl = LineTimer(bpm, 1.0)
+        self.yControl = LineTimer(bpm, 1.0)
         # 附着到UI上
         self.attachUI = None
 

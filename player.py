@@ -1684,6 +1684,7 @@ class Player:
         # 计时器，用于评估性能
         timer = time.time()
         delta = 10 ** -6
+        self.timeCost = 0.001
 
         # 用于统计平均帧数
         frameCount = 0
@@ -1718,6 +1719,7 @@ class Player:
                     if event.key == pygame.K_SPACE:
                         self.pause = not self.pause
             if self.pause:
+                self.timeCost = time.time() - timer
                 clock.tick(self.FPS)
                 continue
             if self.timeS > self.waveDurationS:
@@ -1741,8 +1743,12 @@ class Player:
 
             ### 更新计时器
             current = time.time()
-            delta = current - timer
-            deltaT = delta * self.BPM / 1.875
+            if self.enableCompiler:
+                delta = 1 / self.FPS
+                deltaT = delta * self.BPM / 1.875
+            else:
+                delta = current - timer
+                deltaT = delta * self.BPM / 1.875
             # 统计帧数
             frameCount += 1
             self.frameIndex += 1
@@ -1763,6 +1769,10 @@ class Player:
                                 effect = HitEffect(xn, yn)
                                 self.hitEffectList.append(effect)
 
+                            if self.enableCompiler and note.tempLine is not None:
+                                self.freeTempLine(note)
+                                note.tempLine = None
+
                             if note.type_ == 1:
                                 self.tapSound.play()
                             elif note.type_ == 2:
@@ -1782,12 +1792,12 @@ class Player:
                             self.score += 1 * 10 ** 6 / self.chart.noteCount
 
             ### 帧率控制 阻塞线程
-
-            clock.tick(self.FPS)
             if self.enableCompiler:
                 self.timeS += 1 / self.FPS
                 self.timeT = self.timeS * self.BPM / 1.875
             else:
+                # 阻塞线程
+                clock.tick(self.FPS)
                 # 同步时间变量
                 timer = current
                 self.timeS += delta * self.speed

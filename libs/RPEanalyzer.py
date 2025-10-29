@@ -126,7 +126,7 @@ def analyzeJson(jsonFile: str):
                     int(event["easingType"]),
                 )
 
-            # note
+        # note
         if "notes" in line_:
             for note_ in line_["notes"]:
                 timeT_1 = beatToTimeT(note_['startTime'], line)
@@ -149,6 +149,39 @@ def analyzeJson(jsonFile: str):
                     note.floorPosT = floorPosT
 
                 line.addNote(note)
+
+        # Controls 控制器
+        for i in range(len(line_["alphaControl"]) - 1):
+            x1 = line_["alphaControl"][i]["x"]
+            x2 = line_["alphaControl"][i+1]["x"]
+            v1 = line_["alphaControl"][i]["alpha"]
+            v2 = line_["alphaControl"][i+1]["alpha"]
+            easing = line_["alphaControl"][i]["easing"]
+            line.alphaControl.addPeriod(x1, v1, x2, v2, easing)
+
+        for i in range(len(line_["sizeControl"]) - 1):
+            x1 = line_["sizeControl"][i]["x"]
+            x2 = line_["sizeControl"][i+1]["x"]
+            v1 = line_["sizeControl"][i]["size"]
+            v2 = line_["sizeControl"][i+1]["size"]
+            easing = line_["sizeControl"][i]["easing"]
+            line.sizeControl.addPeriod(x1, v1, x2, v2, easing)
+
+        for i in range(len(line_["posControl"]) - 1):
+            x1 = line_["posControl"][i]["x"]
+            x2 = line_["posControl"][i+1]["x"]
+            v1 = line_["posControl"][i]["pos"]
+            v2 = line_["posControl"][i+1]["pos"]
+            easing = line_["posControl"][i]["easing"]
+            line.posControl.addPeriod(x1, v1, x2, v2, easing)
+
+        for i in range(len(line_["yControl"]) - 1):
+            x1 = line_["yControl"][i]["x"]
+            x2 = line_["yControl"][i+1]["x"]
+            v1 = line_["yControl"][i]["y"]
+            v2 = line_["yControl"][i+1]["y"]
+            easing = line_["yControl"][i]["easing"]
+            line.sizeControl.addPeriod(x1, v1, x2, v2, easing)
         
         chart.addLine(line)
 
