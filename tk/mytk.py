@@ -416,6 +416,12 @@ class EntryDark(Entry):
 
     def leaveEvent(self, event):
         self.config(bg="#333", fg="#ddd", bd=0,)
+
+    def setValue(self, value):
+        self.delete("0", END)
+        self.insert(END, value)
+        return self
+
 class EntryFloatDark(EntryDark):
     def getFloat(self):
         return float(self.get())

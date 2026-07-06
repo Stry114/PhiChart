@@ -500,7 +500,7 @@ def validate_integer(action, value_if_allowed):
 
 
 class LiIntEntryDark(FrameDark):
-    def __init__(self, master, defaultValue=0, step=1, command=Nothing, height=1, var=0, min=float("-inf"), max=float("inf"), *args, **kwargs):
+    def __init__(self, master, defaultValue=0, step=1, command=Nothing, height=1, var=0, min=float("-inf"), max=float("inf"), width=None, *args, **kwargs):
 
         vcmd = master.register(validate_integer)
 
@@ -526,6 +526,9 @@ class LiIntEntryDark(FrameDark):
         self.et1.bind("<MouseWheel>", self.on_WheelEvent)
         self.et1.bind("<Return>", self.on_enter_press)
 
+        if width != None:
+            self.et1.config(width=width)
+
     def on_enter_press(self, event):
         self.master.focus_set()
         # 返回"break"阻止事件继续传播
@@ -535,6 +538,7 @@ class LiIntEntryDark(FrameDark):
         self.et1.delete(0, END)
         self.et1.insert(0, str(value))
         self.callback()
+        return self
 
     def callback(self, *args):
         self.command(self.var)
@@ -627,31 +631,32 @@ class LiFloatEntryDark(LiIntEntryDark):
         self.et1.delete(0, END)
         self.et1.insert(0, str(value))
         self.callback()
+        return self
 
     def callback(self, *args):
         self.command(self.var)
 
     def min(self, *args):
         if self.et1.get() != "":
-            value = int(float(self.et1.get()))
+            value = float(self.et1.get())
         else:
             value = self.defaultValue
         value -= self.step
-        value = float(min(self.maxValue, max(self.minValue, value)))
+        value = round(float(min(self.maxValue, max(self.minValue, value))), 4)
         self.setValue(value)
 
     def add(self, *args):
         if self.et1.get() != "":
-            value = int(float(self.et1.get()))
+            value = float(self.et1.get())
         else:
             value = self.defaultValue
         value += self.step
-        value = float(min(self.maxValue, max(self.minValue, value)))
+        value = round(float(min(self.maxValue, max(self.minValue, value))), 4)
         self.setValue(value)
 
     def getValue(self):
         if self.et1.get() != "":
-            value = int(float(self.et1.get()))
+            value = float(self.et1.get())
             value = float(min(self.maxValue, max(self.minValue, value)))
         else:
             value = self.defaultValue

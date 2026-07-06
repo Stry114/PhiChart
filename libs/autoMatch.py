@@ -14,9 +14,13 @@ class Matcher:
                 self.audioFile = os.path.join(dir, file)
             elif file.endswith(".png"):
                 self.illuFile = os.path.join(dir, file)
+            elif file.endswith(".jpeg"):
+                self.illuFile = os.path.join(dir, file)
             elif file.endswith(".jpg"):
-                self.chartFile = os.path.join(dir, file)
+                self.illuFile = os.path.join(dir, file)
             elif file.endswith(".json"):
+                self.chartFile = os.path.join(dir, file)
+            elif file.endswith(".pec"):
                 self.chartFile = os.path.join(dir, file)
             elif not "." in file:
                 self.chartFile = os.path.join(dir, file)

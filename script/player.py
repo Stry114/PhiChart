@@ -202,6 +202,8 @@ class PreRendCache:
         self.preRendDragHL: dict[int: pygame.Surface] = {}
         self.preRendFlickHL: dict[int: pygame.Surface] = {}
 
+
+
         # 三键
         self.tapOriginalImage = pygame.image.load("assets/Tap.png").convert_alpha()
         self.dragOriginalImage = pygame.image.load("assets/Drag.png").convert_alpha()
@@ -399,6 +401,9 @@ class Player:
                  debug: bool = False, displayUI: bool = True, enableMapping: bool = False, doubleHitEffect: bool = True,
                  brightness: float = 0.4, blurRadius: int = 300):
 
+
+        # 愚人节属性
+        self.halfScore = "000000"
 
         self.width = w
         self.height = h
@@ -1358,161 +1363,58 @@ class Player:
                 align="C",
             )
 
-        if not self.displayDebug:
-            return
-
         draw_text(
             self.foreground_layer,
-            f"FPS: {self.secondCount}",
-            self.font18, self.WHITE,
-            pos=(20, 20),
-            align="NW",
-        )
-
-        if self.timeCost * self.FPS > 1:
-            color = self.RED
-        elif self.timeCost * self.FPS > 0.8:
-            color = self.YELLOW
-        else:
-            color = self.WHITE
-        draw_text(
-            self.foreground_layer,
-            f"cost: {self.timeCost * 1000:.2f} ms ({self.timeCost * self.FPS:.2%})",
-            self.font18, color,
-            pos=(20, 40),
+            self.halfScore,
+            self.font48, (254, 255, 169, 255),
+            pos=(40, 40),
             align="NW",
         )
 
         draw_text(
             self.foreground_layer,
-            f"lines: {self.lineCount}",
-            self.font18, self.WHITE,
-            pos=(20, 170),
+            f"物量：",
+            self.font36, self.WHITE,
+            pos=(40, 140),
+            align="NW",
+        )
+        draw_text(
+            self.foreground_layer,
+            str(len(self.chart.noteList)),
+            self.font36, self.WHITE,
+            pos=(180, 140),
             align="NW",
         )
 
         draw_text(
             self.foreground_layer,
-            f"notes: {self.noteCount}",
-            self.font18, self.WHITE,
-            pos=(20, 190),
+            f"时长：",
+            self.font36, self.WHITE,
+            pos=(40, 210),
+            align="NW",
+        )
+        draw_text(
+            self.foreground_layer,
+            f"{self.waveDurationS//60:02.0f}:{self.waveDurationS%60:.0f}",
+            self.font36, self.WHITE,
+            pos=(180, 210),
             align="NW",
         )
 
         draw_text(
             self.foreground_layer,
-            f"holds: {self.holdCount}",
-            self.font18, self.WHITE,
-            pos=(20, 210),
-            align="NW",
-        )
-
-        draw_text(
-            self.foreground_layer,
-            f"effects: {len(self.hitEffectList)}",
-            self.font18, self.WHITE,
-            pos=(20, 230),
-            align="NW",
-        )
-
-        draw_text(
-            self.foreground_layer,
-            f"pre-rendered images cache:",
-            self.font18, self.WHITE,
-            pos=(20, 260),
-            align="NW",
-        )
-
-        cacheCount = len(self.images.preRendTap) + len(self.images.preRendTapHL)
-        draw_text(
-            self.foreground_layer,
-            f"tap: {cacheCount}",
-            self.font18, self.WHITE,
-            pos=(20, 280),
-            align="NW",
-        )
-
-        cacheCount = len(self.images.preRendDrag) + len(self.images.preRendDragHL)
-        draw_text(
-            self.foreground_layer,
-            f"drag: {cacheCount}",
-            self.font18, self.WHITE,
-            pos=(20, 300),
-            align="NW",
-        )
-
-        cacheCount = len(self.images.preRendFlick) + len(self.images.preRendFlickHL)
-        draw_text(
-            self.foreground_layer,
-            f"flick: {cacheCount}",
-            self.font18, self.WHITE,
-            pos=(20, 320),
-            align="NW",
-        )
-
-        draw_text(
-            self.foreground_layer,
-            f"timeT: {self.timeT: .02f}",
-            self.font18, self.WHITE,
-            pos=(20, 350),
+            f"bpm：",
+            self.font36, self.WHITE,
+            pos=(40, 280),
             align="NW",
         )
         draw_text(
             self.foreground_layer,
-            f"timeS: {self.timeS: .02f} s",
-            self.font18, self.WHITE,
-            pos=(20, 370),
+            str(self.chart.bpm),
+            self.font36, self.WHITE,
+            pos=(180, 280),
             align="NW",
         )
-        draw_text(
-            self.foreground_layer,
-            f"beats: {self.timeT // 32: .0f}",
-            self.font18, self.WHITE,
-            pos=(20, 390),
-            align="NW",
-        )
-
-        draw_text(
-            self.foreground_layer,
-            f"hit: {self.hitBlockCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 60),
-            align="NW",
-        )
-        draw_text(
-            self.foreground_layer,
-            f"effect: {self.effectCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 80),
-            align="NW",
-        )
-        draw_text(
-            self.foreground_layer,
-            f"note: {self.noteCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 100),
-            align="NW",
-        )
-        draw_text(
-            self.foreground_layer,
-            f"line: {self.lineCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 120),
-            align="NW",
-        )
-        draw_text(
-            self.foreground_layer,
-            f"hold: {self.holdCost * 1000: .2f} ms",
-            self.font18, self.WHITE,
-            pos=(20, 140),
-            align="NW",
-        )
-
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 60, self.hitBlockCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 80, self.effectCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 100, self.noteCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 120, self.lineCost / (1 / self.FPS) * 100, 16))
-        pygame.draw.rect(self.foreground_layer, self.WHITE, (200, 140, self.holdCost / (1 / self.FPS) * 100, 16))
 
     def initPlayer(self):
         # 初始化 pygame
@@ -1570,7 +1472,7 @@ class Player:
             self.font36 = pygame.font.Font('assets/phigros.ttf', 48)
             self.font24 = pygame.font.Font('assets/phigros.ttf', 32)
             self.font18 = pygame.font.Font('assets/phigros.ttf', 24)
-            self.font48 = pygame.font.Font('assets/phigros.ttf', 64)
+            self.font48 = pygame.font.Font('assets/phigros.ttf', 72)
         except Exception as e:
             traceback.print_exc()
             self.font36 = pygame.font.SysFont(None, 48)
@@ -1684,9 +1586,6 @@ class Player:
 
 
     def mainloop(self):
-
-
-        self.header()
 
         global running
         running = True

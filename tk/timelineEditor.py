@@ -60,6 +60,7 @@ def PlayerProcess(chart: Chart, audioFile, illuFile, startTime: float, enable3D:
     chart.fastCalcFloorPos()
 
     player = Player(w=1000, h=800, fps=120)
+    player.enable3D = enable3D
     player.displacementY = 1.0
     player.audioFile = audioFile
     player.illuFile = illuFile

@@ -790,7 +790,7 @@ class Player:
                     dy2 = dy1 + (note.holdTime * 1.875 / line.bpm) * note.speed * self.speed3D
                     dy1 = max(0, dy1)
                     dy2 = min(self.boundary / self.Y, dy2)
-                if not self.enable3D and not note.above:  # 反向下落取反
+                if self.enable3D and not note.above:  # 反向下落取反
                     dy1, dy2 = -dy1, -dy2
                 note.centerPos1 = line.centerPos + note.posX * line.unitX + dy1 * line.unitY
                 note.centerPos2 = line.centerPos + note.posX * line.unitX + dy2 * line.unitY
@@ -1594,6 +1594,8 @@ class Player:
 
         # 退出窗口
         pygame.quit()
+
+        print(self.cmrPos)
 
     def outputChart(self):
 
